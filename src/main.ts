@@ -1,25 +1,23 @@
 import "./style.css";
-import { mountAvatar, type MountedAvatar } from "open-bot-avatar/dom";
-import type { AvatarDefinition, AvatarMotion } from "open-bot-avatar";
-import pineappleJson from "./pineapple.json" with { type: "json" };
+import {
+  mountPineappleAvatar,
+  type Mood,
+  type PineappleAvatarHandle,
+} from "./pineappleAvatar";
 
-const pineapple = pineappleJson as AvatarDefinition;
-
-const MOODS: { id: AvatarMotion; label: string }[] = [
+const MOODS: { id: Mood; label: string }[] = [
   { id: "idle", label: "Idle" },
   { id: "thinking", label: "Thinking" },
   { id: "happy", label: "Happy" },
 ];
-
-const COLOR = "#f5c518";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
   <main class="stage">
     <h1 class="brand">Pineapple</h1>
     <p class="lede">
-      Open Bot Avatar built from your pineapple art — 3D volume, pointer gaze,
-      and mood states for an AI companion on the web.
+      Your full-color pineapple art, with mood eyes for an AI companion —
+      green leaves, grid vest, and sparkles preserved.
     </p>
     <div class="avatar-shell" aria-label="Pineapple avatar preview">
       <div id="bot"></div>
@@ -31,7 +29,7 @@ app.innerHTML = `
       ).join("")}
     </div>
     <div class="meta">
-      <p>Move the pointer — it looks at you. Wire <code>avatar.update({ mood })</code> from your chat UI.</p>
+      <p>Move the pointer — the eyes follow. Call <code>setPineappleMood("thinking")</code> from your chat UI.</p>
       <p class="status" id="status" aria-live="polite">Mood: idle</p>
     </div>
   </main>
@@ -41,16 +39,13 @@ const host = document.querySelector<HTMLDivElement>("#bot")!;
 const status = document.querySelector<HTMLParagraphElement>("#status")!;
 const buttons = [...document.querySelectorAll<HTMLButtonElement>("[data-mood]")];
 
-const avatar: MountedAvatar = mountAvatar(host, {
-  definition: pineapple,
-  color: COLOR,
+const avatar = mountPineappleAvatar(host, {
   mood: "idle",
   followPointer: true,
-  depth: 7,
   label: "Pineapple",
 });
 
-function setMood(mood: AvatarMotion) {
+function setMood(mood: Mood) {
   avatar.update({ mood });
   status.textContent = `Mood: ${mood}`;
   for (const btn of buttons) {
@@ -59,14 +54,13 @@ function setMood(mood: AvatarMotion) {
 }
 
 for (const btn of buttons) {
-  btn.addEventListener("click", () => setMood(btn.dataset.mood as AvatarMotion));
+  btn.addEventListener("click", () => setMood(btn.dataset.mood as Mood));
 }
 
-// Handy for embedding / console experiments while developing a host site.
 declare global {
   interface Window {
-    pineappleAvatar: MountedAvatar;
-    setPineappleMood: (mood: AvatarMotion) => void;
+    pineappleAvatar: PineappleAvatarHandle;
+    setPineappleMood: (mood: Mood) => void;
   }
 }
 window.pineappleAvatar = avatar;

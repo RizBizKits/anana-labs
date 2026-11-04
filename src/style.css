@@ -68,8 +68,7 @@ body {
 }
 
 .avatar-shell {
-  width: min(320px, 78vw);
-  aspect-ratio: 1;
+  width: min(280px, 72vw);
   border-radius: 28px;
   background:
     radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.08), transparent 55%),
@@ -77,13 +76,56 @@ body {
   border: 1px solid var(--line);
   display: grid;
   place-items: center;
-  padding: 1.25rem;
+  padding: 1.1rem 1.1rem 0.85rem;
   animation: rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 #bot {
   width: 100%;
-  aspect-ratio: 1;
+}
+
+.pineapple-avatar {
+  width: 100%;
+  line-height: 0;
+}
+
+.pineapple-avatar__stage {
+  position: relative;
+  width: 100%;
+  animation: bob 3.6s ease-in-out infinite;
+}
+
+.pineapple-avatar__art {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+
+.pineapple-avatar__face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pineapple-avatar__stage {
+    animation: none;
+  }
 }
 
 .controls {
@@ -158,6 +200,6 @@ body {
   }
 
   .avatar-shell {
-    width: min(280px, 86vw);
+    width: min(240px, 78vw);
   }
 }
