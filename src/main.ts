@@ -49,6 +49,7 @@ app.innerHTML = `
     <div class="meta">
       <p>Move the pointer — the eyes follow. Call <code>setPineappleMood("love")</code> from your chat UI.</p>
       <p class="status" id="status" aria-live="polite">Mood: idle</p>
+      <p><a class="preview-link" href="/preview.html">Open mood preview</a></p>
     </div>
   </main>
 `;
