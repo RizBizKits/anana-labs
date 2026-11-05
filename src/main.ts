@@ -83,7 +83,7 @@ function readSettings(): AvatarSettings {
 
 function setMood(mood: Mood) {
   avatar.update({ mood });
-  status.textContent = `Mood: ${mood}`;
+  status.textContent = mood[0]!.toUpperCase() + mood.slice(1);
   for (const btn of buttons) {
     btn.setAttribute("aria-pressed", String(btn.dataset.mood === mood));
   }
