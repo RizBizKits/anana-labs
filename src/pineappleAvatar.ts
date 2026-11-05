@@ -19,9 +19,9 @@ export interface PineappleAvatarHandle {
 }
 
 const FACE = {
-  left: { x: 0.3506, y: 0.5816 },
-  right: { x: 0.6036, y: 0.5746 },
-  mouth: { x: 0.4801, y: 0.6583 },
+  left: { x: 0.3494, y: 0.5821 },
+  right: { x: 0.6044, y: 0.575 },
+  mouth: { x: 0.4799, y: 0.6592 },
   eyeW: 0.042,
   eyeH: 0.1,
 };

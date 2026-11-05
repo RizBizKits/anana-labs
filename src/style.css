@@ -69,14 +69,12 @@ body {
 
 .avatar-shell {
   width: min(280px, 72vw);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.08), transparent 55%),
-    var(--panel);
-  border: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  border: none;
   display: grid;
   place-items: center;
-  padding: 1.1rem 1.1rem 0.85rem;
+  padding: 0;
   animation: rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -101,6 +99,10 @@ body {
   display: block;
   user-select: none;
   pointer-events: none;
+  /* Avoid light fringing when the browser scales the cutout */
+  image-rendering: auto;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .pineapple-avatar__face {
