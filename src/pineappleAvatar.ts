@@ -118,24 +118,11 @@ export function mountPineappleAvatar(
   host.setAttribute("role", "img");
   host.setAttribute("aria-label", initial.label ?? "Pineapple");
 
-  const filterSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  filterSvg.classList.add("pineapple-avatar__filters");
-  filterSvg.setAttribute("aria-hidden", "true");
-  filterSvg.innerHTML = `
-    <defs>
-      <filter id="${WOBBLE_FILTER_ID}" x="-14%" y="-14%" width="128%" height="128%" color-interpolation-filters="sRGB">
-        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="2" result="noise"></feTurbulence>
-        <feDisplacementMap in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G"/>
-      </filter>
-    </defs>
-  `;
-  const turbulence = filterSvg.querySelector("feTurbulence")!;
-  const displacement = filterSvg.querySelector("feDisplacementMap")!;
-
   const stage = document.createElement("div");
   stage.className = "pineapple-avatar__stage";
 
-  // Layer 1: yellow body + leaves — ONLY this wobbles
+  // Layer 1: yellow body + leaves — ONLY this wobbles (CSS jelly, no displacement filter —
+  // feDisplacementMap was leaving ghost outlines around the fixed face)
   const bodyWrap = document.createElement("div");
   bodyWrap.className = "pineapple-avatar__body";
   const bodyImg = document.createElement("img");
@@ -145,7 +132,7 @@ export function mountPineappleAvatar(
   bodyImg.draggable = false;
   bodyWrap.append(bodyImg);
 
-  // Layer 2: static yellow face plate — covers wobble under eyes/mouth (kills ghost outlines)
+  // Layer 2: static yellow face plate under eyes/mouth
   const facePlate = document.createElement("img");
   facePlate.className = "pineapple-avatar__art pineapple-avatar__faceplate";
   facePlate.src = new URL("./assets/pineapple-faceplate.png", import.meta.url).href;
@@ -164,9 +151,10 @@ export function mountPineappleAvatar(
   face.classList.add("pineapple-avatar__face");
   face.setAttribute("viewBox", "0 0 100 100");
   face.setAttribute("aria-hidden", "true");
+  face.setAttribute("shape-rendering", "geometricPrecision");
 
   stage.append(bodyWrap, facePlate, detailsImg, face);
-  host.append(filterSvg, stage);
+  host.append(stage);
 
   const paintFace = () => {
     face.innerHTML = renderFace(mood, gazeX, gazeY, eyeThickness, mouthThickness);
@@ -175,30 +163,26 @@ export function mountPineappleAvatar(
   const applyWobble = (timeSec: number) => {
     const amount = reduced ? 0 : Math.max(0, wobble);
 
-    // Gentle bob on the whole avatar (not blobby)
+    // Gentle bob on the whole avatar
     const bob = Math.sin(timeSec * 2.2) * 4;
     stage.style.transform = `translateY(${bob.toFixed(2)}px)`;
 
-    // Jelly + fluid displacement — body/leaves only
-    const sx = 1 + Math.sin(timeSec * 2.05) * 0.02 * amount;
-    const sy = 1 + Math.cos(timeSec * 2.35) * 0.03 * amount;
-    const skew = Math.sin(timeSec * 1.55) * 2.6 * amount;
-    const slideX = Math.sin(timeSec * 1.1) * 3.8 * amount;
-    bodyWrap.style.transform = `translate(${slideX.toFixed(2)}px, 0) scale(${sx.toFixed(4)}, ${sy.toFixed(4)}) skewX(${skew.toFixed(2)}deg)`;
-
-    if (amount < 0.02) {
-      bodyWrap.style.filter = "none";
-      displacement.setAttribute("scale", "0");
-      return;
-    }
-    const freqX = 0.01 + amount * 0.005 + Math.sin(timeSec * 0.65) * 0.003 * amount;
-    const freqY = 0.014 + amount * 0.007 + Math.cos(timeSec * 0.55) * 0.004 * amount;
-    turbulence.setAttribute(
-      "baseFrequency",
-      `${Math.max(0.004, freqX).toFixed(4)} ${Math.max(0.004, freqY).toFixed(4)}`,
-    );
-    displacement.setAttribute("scale", (amount * 12).toFixed(2));
-    bodyWrap.style.filter = `url(#${WOBBLE_FILTER_ID})`;
+    // Blobby jelly on body/leaves only — layered harmonics for a fluid slide
+    const sx =
+      1 +
+      Math.sin(timeSec * 2.05) * 0.028 * amount +
+      Math.sin(timeSec * 3.4) * 0.012 * amount;
+    const sy =
+      1 +
+      Math.cos(timeSec * 2.35) * 0.04 * amount +
+      Math.cos(timeSec * 4.1) * 0.014 * amount;
+    const skew =
+      Math.sin(timeSec * 1.55) * 3.2 * amount + Math.sin(timeSec * 2.8) * 1.2 * amount;
+    const slideX =
+      Math.sin(timeSec * 1.1) * 5 * amount + Math.sin(timeSec * 2.6) * 1.8 * amount;
+    const slideY = Math.cos(timeSec * 1.35) * 2.4 * amount;
+    bodyWrap.style.transform = `translate(${slideX.toFixed(2)}px, ${slideY.toFixed(2)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)}) skewX(${skew.toFixed(2)}deg)`;
+    bodyWrap.style.filter = "none";
   };
 
   const tick = () => {
