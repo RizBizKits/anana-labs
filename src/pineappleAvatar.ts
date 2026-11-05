@@ -8,7 +8,7 @@ export interface PineappleAvatarOptions {
   eyeThickness?: number;
   /** Stroke thickness of the mouth. 1 = default. */
   mouthThickness?: number;
-  /** Fluid blob wobble amount. 0 = still, 1 = gentle, 2 = gooey. */
+  /** Fluid blob wobble for outer body + leaves only. 0 = still. */
   wobble?: number;
 }
 
@@ -24,9 +24,9 @@ export interface PineappleAvatarHandle {
 }
 
 const FACE = {
-  left: { x: 0.3494, y: 0.5821 },
-  right: { x: 0.6044, y: 0.575 },
-  mouth: { x: 0.4799, y: 0.6592 },
+  left: { x: 0.3536, y: 0.5815 },
+  right: { x: 0.6031, y: 0.5746 },
+  mouth: { x: 0.4813, y: 0.6575 },
   eyeH: 0.1,
 };
 
@@ -118,15 +118,13 @@ export function mountPineappleAvatar(
   host.setAttribute("role", "img");
   host.setAttribute("aria-label", initial.label ?? "Pineapple");
 
-  // Hidden SVG filter defs for liquid displacement
   const filterSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   filterSvg.classList.add("pineapple-avatar__filters");
   filterSvg.setAttribute("aria-hidden", "true");
   filterSvg.innerHTML = `
     <defs>
-      <filter id="${WOBBLE_FILTER_ID}" x="-12%" y="-12%" width="124%" height="124%" color-interpolation-filters="sRGB">
-        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="2" result="noise">
-        </feTurbulence>
+      <filter id="${WOBBLE_FILTER_ID}" x="-14%" y="-14%" width="128%" height="128%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="2" result="noise"></feTurbulence>
         <feDisplacementMap in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G"/>
       </filter>
     </defs>
@@ -137,46 +135,63 @@ export function mountPineappleAvatar(
   const stage = document.createElement("div");
   stage.className = "pineapple-avatar__stage";
 
-  const img = document.createElement("img");
-  img.className = "pineapple-avatar__art";
-  img.src = new URL("./assets/pineapple-base.png", import.meta.url).href;
-  img.alt = "";
-  img.draggable = false;
+  // Layer 1: yellow body + leaves — ONLY this wobbles
+  const bodyWrap = document.createElement("div");
+  bodyWrap.className = "pineapple-avatar__body";
+  const bodyImg = document.createElement("img");
+  bodyImg.className = "pineapple-avatar__art";
+  bodyImg.src = new URL("./assets/pineapple-body.png", import.meta.url).href;
+  bodyImg.alt = "";
+  bodyImg.draggable = false;
+  bodyWrap.append(bodyImg);
 
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.classList.add("pineapple-avatar__face");
-  svg.setAttribute("viewBox", "0 0 100 100");
-  svg.setAttribute("aria-hidden", "true");
+  // Layer 2: lattice, white V, sparkles — static
+  const detailsImg = document.createElement("img");
+  detailsImg.className = "pineapple-avatar__art pineapple-avatar__details";
+  detailsImg.src = new URL("./assets/pineapple-details.png", import.meta.url).href;
+  detailsImg.alt = "";
+  detailsImg.draggable = false;
 
-  stage.append(img, svg);
+  // Layer 3: eyes / mouth — static positions, mood only
+  const face = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  face.classList.add("pineapple-avatar__face");
+  face.setAttribute("viewBox", "0 0 100 100");
+  face.setAttribute("aria-hidden", "true");
+
+  stage.append(bodyWrap, detailsImg, face);
   host.append(filterSvg, stage);
 
   const paintFace = () => {
-    svg.innerHTML = renderFace(mood, gazeX, gazeY, eyeThickness, mouthThickness);
+    face.innerHTML = renderFace(mood, gazeX, gazeY, eyeThickness, mouthThickness);
   };
 
   const applyWobble = (timeSec: number) => {
     const amount = reduced ? 0 : Math.max(0, wobble);
 
-    // Soft jelly squash / slide — whole body including face
-    const bob = Math.sin(timeSec * 2.2) * (4 + amount * 3);
-    const sx = 1 + Math.sin(timeSec * 2.05) * 0.018 * amount;
-    const sy = 1 + Math.cos(timeSec * 2.35) * 0.028 * amount;
-    const skew = Math.sin(timeSec * 1.55) * 2.4 * amount;
-    const slideX = Math.sin(timeSec * 1.1) * 3.5 * amount;
-    stage.style.transform = `translate(${slideX.toFixed(2)}px, ${bob.toFixed(2)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)}) skewX(${skew.toFixed(2)}deg)`;
+    // Gentle bob on the whole avatar (not blobby)
+    const bob = Math.sin(timeSec * 2.2) * 4;
+    stage.style.transform = `translateY(${bob.toFixed(2)}px)`;
 
-    // Fluid edge displacement — drift noise by easing baseFrequency (no seed jumps)
+    // Jelly + fluid displacement — body/leaves only
+    const sx = 1 + Math.sin(timeSec * 2.05) * 0.02 * amount;
+    const sy = 1 + Math.cos(timeSec * 2.35) * 0.03 * amount;
+    const skew = Math.sin(timeSec * 1.55) * 2.6 * amount;
+    const slideX = Math.sin(timeSec * 1.1) * 3.8 * amount;
+    bodyWrap.style.transform = `translate(${slideX.toFixed(2)}px, 0) scale(${sx.toFixed(4)}, ${sy.toFixed(4)}) skewX(${skew.toFixed(2)}deg)`;
+
     if (amount < 0.02) {
-      stage.style.filter = "none";
+      bodyWrap.style.filter = "none";
       displacement.setAttribute("scale", "0");
       return;
     }
     const freqX = 0.01 + amount * 0.005 + Math.sin(timeSec * 0.65) * 0.003 * amount;
     const freqY = 0.014 + amount * 0.007 + Math.cos(timeSec * 0.55) * 0.004 * amount;
-    turbulence.setAttribute("baseFrequency", `${Math.max(0.004, freqX).toFixed(4)} ${Math.max(0.004, freqY).toFixed(4)}`);
-    displacement.setAttribute("scale", (amount * 10).toFixed(2));
-    stage.style.filter = `url(#${WOBBLE_FILTER_ID})`;
+    turbulence.setAttribute(
+      "baseFrequency",
+      `${Math.max(0.004, freqX).toFixed(4)} ${Math.max(0.004, freqY).toFixed(4)}`,
+    );
+    displacement.setAttribute("scale", (amount * 12).toFixed(2));
+    bodyWrap.style.filter = `url(#${WOBBLE_FILTER_ID})`;
   };
 
   const tick = () => {
