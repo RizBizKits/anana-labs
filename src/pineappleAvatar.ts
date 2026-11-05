@@ -53,16 +53,13 @@ const FACE = {
   eyeH: 0.1,
 };
 
-function stroke(t: number): number {
-  return 1.4 + 4 * Math.max(0.25, t);
-}
-
 function pillEye(
   side: "left" | "right",
   thickness: number,
   height: number,
   glanceX = 0,
   glanceY = 0,
+  rotateDeg = 0,
 ): string {
   const id = side === "left" ? "L" : "R";
   const t = Math.max(0.25, thickness);
@@ -71,44 +68,17 @@ function pillEye(
   const h = 10 + 14 * hh;
   const x = glanceX - w / 2;
   const y = glanceY - h / 2;
-  return `<rect class="eye eye-${id}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${(w / 2).toFixed(2)}" fill="#111"/>`;
+  const rect = `<rect class="eye eye-${id}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${(w / 2).toFixed(2)}" fill="#111"/>`;
+  if (!rotateDeg) return rect;
+  return `<g transform="rotate(${rotateDeg.toFixed(1)})">${rect}</g>`;
 }
 
-function arcEye(
-  id: string,
-  thickness: number,
-  height: number,
-  flip = false,
-): string {
-  const sw = stroke(thickness).toFixed(2);
+/** Closed happy/wink eye — same stroke language as Happy, not a new silhouette. */
+function closedEye(side: "left" | "right", thickness: number, height: number): string {
+  const id = side === "left" ? "L" : "R";
+  const sw = (1.6 + 4.2 * Math.max(0.25, thickness)).toFixed(2);
   const rise = 5 + 8 * Math.max(0.25, height);
-  if (flip) {
-    // sad / angry downward arc
-    return `<path class="eye eye-${id}" d="M -8 -3 Q 0 ${rise - 3} 8 -3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-  }
-  return `<path class="eye eye-${id}" d="M -8 3 Q 0 ${-rise + 3} 8 3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-}
-
-function heartEye(id: string, thickness: number, height: number): string {
-  const s = 0.55 + 0.35 * Math.max(0.25, thickness);
-  const v = 0.55 + 0.4 * Math.max(0.25, height);
-  // Simple heart path centered at origin
-  return `<path class="eye eye-${id}" transform="scale(${s.toFixed(3)} ${v.toFixed(3)})" d="M0 6 C0 6 -10 -2 -10 -8 C-10 -12 -6 -14 -3 -12 C-1 -11 0 -9 0 -9 C0 -9 1 -11 3 -12 C6 -14 10 -12 10 -8 C10 -2 0 6 0 6Z" fill="#111"/>`;
-}
-
-function spiralEye(id: string, thickness: number, height: number): string {
-  const sw = (1.2 + 2.8 * Math.max(0.25, thickness)).toFixed(2);
-  const s = 0.7 + 0.45 * Math.max(0.25, height);
-  return `<path class="eye eye-${id}" transform="scale(${s.toFixed(3)})" d="M0 0 m0 -8 a8 8 0 1 1 -0.1 0 M0 0 m0 -5 a5 5 0 1 0 0.1 0 M0 0 m0 -2.2 a2.2 2.2 0 1 1 -0.1 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-}
-
-function xEye(id: string, thickness: number, height: number): string {
-  const sw = stroke(thickness).toFixed(2);
-  const s = 4 + 5 * Math.max(0.25, height);
-  return `<g class="eye eye-${id}" stroke="#111" stroke-width="${sw}" stroke-linecap="round">
-    <path d="M ${-s} ${-s} L ${s} ${s}"/>
-    <path d="M ${s} ${-s} L ${-s} ${s}"/>
-  </g>`;
+  return `<path class="eye eye-${id}" d="M -8 3 Q 0 ${(-rise + 3).toFixed(2)} 8 3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
 }
 
 function eyeMarkup(
@@ -117,59 +87,61 @@ function eyeMarkup(
   thickness: number,
   height: number,
 ): string {
-  const id = side === "left" ? "L" : "R";
-  const t = Math.max(0.25, thickness);
-  const hh = Math.max(0.25, height);
-
+  // Every open eye stays a vertical pill. Expression comes from glance,
+  // scale, tilt, and mouth — never circles / ellipses / hearts / Xs.
   switch (mood) {
     case "happy":
-      return arcEye(id, thickness, height, false);
+      return closedEye(side, thickness, height);
     case "thinking":
       return pillEye(side, thickness, height, side === "left" ? 3.2 : 4.2, -1);
-    case "surprised": {
-      const rx = 3.2 + 3.2 * t;
-      const ry = 4.5 + 5.5 * hh;
-      return `<ellipse class="eye eye-${id}" cx="0" cy="0" rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="#111"/>`;
-    }
+    case "surprised":
+      // Same pill, taller + a hair thicker — wide-eyed without changing shape
+      return pillEye(side, thickness * 1.05, height * 1.35, 0, -1.5);
     case "wink":
       return side === "left"
-        ? arcEye(id, thickness, height, false)
+        ? closedEye(side, thickness, height)
         : pillEye(side, thickness, height, 0, 0);
     case "love":
-      return heartEye(id, thickness, height);
-    case "angry": {
-      // Slanted thick bars
-      const sw = stroke(thickness).toFixed(2);
-      const len = 6 + 6 * hh;
-      const tilt = side === "left" ? -28 : 28;
-      return `<path class="eye eye-${id}" transform="rotate(${tilt})" d="M ${-len} 0 L ${len} 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-    }
-    case "sleepy": {
-      const sw = stroke(thickness).toFixed(2);
-      const len = 5 + 5 * t;
-      return `<path class="eye eye-${id}" d="M ${-len} 0 L ${len} 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-    }
+      // Soft inward glance
+      return pillEye(
+        side,
+        thickness,
+        height,
+        side === "left" ? 2.4 : -2.4,
+        1.2,
+      );
+    case "angry":
+      // Same pills, brows-in tilt
+      return pillEye(
+        side,
+        thickness,
+        height * 0.9,
+        side === "left" ? 1.5 : -1.5,
+        -1,
+        side === "left" ? -18 : 18,
+      );
+    case "sleepy":
+      // Squashed pills, looking down
+      return pillEye(side, thickness * 1.15, height * 0.35, 0, 2.5);
     case "sad":
-      return arcEye(id, thickness, height, true);
+      return pillEye(side, thickness, height * 0.85, 0, 3.5);
     case "silly":
-      // Asymmetric: left big round, right tiny
-      if (side === "left") {
-        const r = 4.5 + 4 * Math.max(t, hh) * 0.5;
-        return `<circle class="eye eye-${id}" cx="0" cy="0" r="${r.toFixed(2)}" fill="#111"/>`;
-      }
-      return pillEye(side, thickness * 0.7, height * 0.55, 2, 3);
-    case "dizzy":
+      // Asymmetric glance + size, still pills
       return side === "left"
-        ? spiralEye(id, thickness, height)
-        : xEye(id, thickness, height);
-    case "scared": {
-      const r = 1.4 + 1.6 * t;
-      return `<circle class="eye eye-${id}" cx="0" cy="0" r="${r.toFixed(2)}" fill="#111"/>`;
-    }
+        ? pillEye(side, thickness * 1.15, height * 1.15, -2, -2)
+        : pillEye(side, thickness * 0.75, height * 0.7, 3.5, 3);
+    case "dizzy":
+      // Cross-eyed / rolled
+      return side === "left"
+        ? pillEye(side, thickness, height, 4.5, -2.5, -12)
+        : pillEye(side, thickness, height, -4.5, 2.5, 12);
+    case "scared":
+      // Tiny thin pills, pulled up
+      return pillEye(side, thickness * 0.55, height * 0.7, 0, -2.5);
     case "smug":
       return side === "left"
-        ? arcEye(id, thickness, height * 0.75, false)
-        : pillEye(side, thickness, height * 0.65, 1, 2);
+        ? pillEye(side, thickness, height * 0.55, 1, 2)
+        : pillEye(side, thickness, height, 1.5, 0);
     case "idle":
     default:
       return pillEye(side, thickness, height, 0, 0);
