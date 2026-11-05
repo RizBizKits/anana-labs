@@ -1,3 +1,6 @@
+import "./avatar.css";
+import type { SolidMeshHandle } from "./solidMesh";
+
 export const MOODS = [
   { id: "idle", label: "Idle" },
   { id: "thinking", label: "Thinking" },
@@ -6,19 +9,18 @@ export const MOODS = [
 ] as const;
 
 export type Mood = (typeof MOODS)[number]["id"];
+export type RenderStyle = "flat" | "solid";
 
 export interface PineappleAvatarOptions {
   mood?: Mood;
   followPointer?: boolean;
   label?: string;
-  /** Horizontal thickness of the eye pills / strokes. 1 = default. */
   eyeThickness?: number;
-  /** Vertical height of the eye pills / arcs. 1 = default. */
   eyeHeight?: number;
-  /** Stroke thickness of the mouth. 1 = default. */
   mouthThickness?: number;
-  /** Jelly wobble amount for the whole pineapple. 0 = still. */
   wobble?: number;
+  /** Flat cutout vs real WebGL inflated mesh. */
+  style?: RenderStyle;
 }
 
 export interface PineappleAvatarHandle {
@@ -32,6 +34,7 @@ export interface PineappleAvatarHandle {
       | "mouthThickness"
       | "followPointer"
       | "wobble"
+      | "style"
     >
   >;
   destroy(): void;
@@ -97,7 +100,6 @@ function eyeMarkup(
 function mouthMarkup(mood: Mood, thickness: number): string {
   const t = Math.max(0.25, thickness);
   const sw = (1.2 + 3.6 * t).toFixed(2);
-
   switch (mood) {
     case "happy":
       return `<path class="mouth" d="M -11 0 Q 0 11 11 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
@@ -129,7 +131,6 @@ function renderFace(
   const M = to(mouth);
   const eyeScale = (eyeH * 100) / 18;
   const mouthScale = (eyeH * 100) / 20;
-
   return `
     <g class="gaze" transform="translate(${gx} ${gy})">
       <g transform="translate(${L.x} ${L.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "left", eyeThickness, eyeHeight)}</g>
@@ -153,11 +154,15 @@ export function mountPineappleAvatar(
   let eyeHeight = initial.eyeHeight ?? 1;
   let mouthThickness = initial.mouthThickness ?? 1;
   let wobble = initial.wobble ?? 0.7;
+  let style: RenderStyle = initial.style ?? "flat";
   let gazeX = 0;
   let gazeY = 0;
   let raf = 0;
   let targetX = 0;
   let targetY = 0;
+  let mesh: SolidMeshHandle | null = null;
+  let meshLoading = false;
+  let destroyed = false;
   const reduced = prefersReducedMotion();
 
   host.replaceChildren();
@@ -165,14 +170,25 @@ export function mountPineappleAvatar(
   host.setAttribute("role", "img");
   host.setAttribute("aria-label", initial.label ?? "Pineapple");
 
+  const space = document.createElement("div");
+  space.className = "pineapple-avatar__space";
+
+  const shadow = document.createElement("div");
+  shadow.className = "pineapple-avatar__shadow";
+
   const stage = document.createElement("div");
   stage.className = "pineapple-avatar__stage";
 
+  const artUrl = new URL("./assets/pineapple.png", import.meta.url).href;
+
   const art = document.createElement("img");
-  art.className = "pineapple-avatar__art";
-  art.src = new URL("./assets/pineapple.png", import.meta.url).href;
+  art.className = "pineapple-avatar__art pineapple-avatar__art--flat";
+  art.src = artUrl;
   art.alt = "";
   art.draggable = false;
+
+  const volumeRoot = document.createElement("div");
+  volumeRoot.className = "pineapple-avatar__volume";
 
   const face = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   face.classList.add("pineapple-avatar__face");
@@ -180,8 +196,14 @@ export function mountPineappleAvatar(
   face.setAttribute("aria-hidden", "true");
   face.setAttribute("shape-rendering", "geometricPrecision");
 
-  stage.append(art, face);
-  host.append(stage);
+  stage.append(art, volumeRoot, face);
+  space.append(shadow, stage);
+  host.append(space);
+
+  const syncStyleClass = () => {
+    host.classList.toggle("pineapple-avatar--solid", style === "solid");
+  };
+  syncStyleClass();
 
   const paintFace = () => {
     face.innerHTML = renderFace(
@@ -194,23 +216,63 @@ export function mountPineappleAvatar(
     );
   };
 
-  const applyWobble = (timeSec: number) => {
+  const ensureMesh = async () => {
+    if (mesh || meshLoading || destroyed) return;
+    meshLoading = true;
+    try {
+      const { createSolidMesh } = await import("./solidMesh");
+      const built = await createSolidMesh(volumeRoot, artUrl);
+      if (destroyed) {
+        built.destroy();
+        return;
+      }
+      mesh = built;
+      volumeRoot.replaceChildren(built.canvas);
+      host.classList.add("pineapple-avatar--solid-ready");
+      mesh.setWobble(reduced ? 0 : wobble);
+      paintFace();
+      built.resize();
+    } catch (err) {
+      console.warn("Solid mesh failed, staying flat", err);
+    } finally {
+      meshLoading = false;
+    }
+  };
+
+  if (style === "solid") void ensureMesh();
+
+  const applyFlatMotion = (timeSec: number) => {
     const a = reduced ? 0 : Math.max(0, wobble);
     const bob = Math.sin(timeSec * 2.2) * (4 + a * 2);
     const sx =
       1 + Math.sin(timeSec * 2.05) * 0.03 * a + Math.sin(timeSec * 3.4) * 0.012 * a;
     const sy =
       1 + Math.cos(timeSec * 2.35) * 0.042 * a + Math.cos(timeSec * 4.1) * 0.014 * a;
-    const skew = Math.sin(timeSec * 1.55) * 3.4 * a + Math.sin(timeSec * 2.8) * 1.2 * a;
-    const slideX = Math.sin(timeSec * 1.1) * 5 * a + Math.sin(timeSec * 2.6) * 1.8 * a;
+    const skew =
+      Math.sin(timeSec * 1.55) * 3.4 * a + Math.sin(timeSec * 2.8) * 1.2 * a;
+    const slideX =
+      Math.sin(timeSec * 1.1) * 5 * a + Math.sin(timeSec * 2.6) * 1.8 * a;
     stage.style.transform = `translate(${slideX.toFixed(2)}px, ${bob.toFixed(2)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)}) skewX(${skew.toFixed(2)}deg)`;
+    shadow.style.opacity = "0";
   };
 
   const tick = () => {
-    gazeX += (targetX - gazeX) * 0.14;
-    gazeY += (targetY - gazeY) * 0.14;
+    gazeX += (targetX - gazeX) * 0.12;
+    gazeY += (targetY - gazeY) * 0.12;
     paintFace();
-    applyWobble(performance.now() / 1000);
+
+    if (style === "solid" && mesh) {
+      // Tilt canvas + SVG face together so expressions stay the same as Flat
+      const tiltY = gazeX * 10;
+      const tiltX = -gazeY * 6;
+      stage.style.transform = `perspective(900px) rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`;
+      shadow.style.opacity = "0";
+      mesh.setPointer(gazeX, gazeY);
+      mesh.setWobble(reduced ? 0 : wobble);
+      mesh.tick(performance.now() / 1000);
+    } else {
+      applyFlatMotion(performance.now() / 1000);
+    }
     raf = requestAnimationFrame(tick);
   };
 
@@ -223,9 +285,12 @@ export function mountPineappleAvatar(
     targetY = Math.max(-1, Math.min(1, (e.clientY - cy) / (rect.height * 0.6)));
   };
 
+  const onResize = () => mesh?.resize();
+
   paintFace();
   raf = requestAnimationFrame(tick);
   window.addEventListener("pointermove", onPointer);
+  window.addEventListener("resize", onResize);
 
   return {
     update(options) {
@@ -235,21 +300,47 @@ export function mountPineappleAvatar(
       if (options.eyeHeight !== undefined) eyeHeight = options.eyeHeight;
       if (options.mouthThickness !== undefined) mouthThickness = options.mouthThickness;
       if (options.wobble !== undefined) wobble = options.wobble;
+      if (options.style !== undefined) {
+        style = options.style;
+        syncStyleClass();
+        if (style === "solid") void ensureMesh();
+        else {
+          host.classList.remove("pineapple-avatar--solid-ready");
+          stage.style.transform = "";
+        }
+      }
       if (options.label !== undefined) host.setAttribute("aria-label", options.label);
       if (!followPointer) {
         targetX = 0;
         targetY = 0;
       }
+      if (mesh) mesh.setWobble(reduced ? 0 : wobble);
       paintFace();
     },
     getOptions() {
-      return { mood, eyeThickness, eyeHeight, mouthThickness, followPointer, wobble };
+      return {
+        mood,
+        eyeThickness,
+        eyeHeight,
+        mouthThickness,
+        followPointer,
+        wobble,
+        style,
+      };
     },
     destroy() {
+      destroyed = true;
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onPointer);
+      window.removeEventListener("resize", onResize);
+      mesh?.destroy();
+      mesh = null;
       host.replaceChildren();
-      host.classList.remove("pineapple-avatar");
+      host.classList.remove(
+        "pineapple-avatar",
+        "pineapple-avatar--solid",
+        "pineapple-avatar--solid-ready",
+      );
     },
   };
 }

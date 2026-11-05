@@ -69,36 +69,6 @@ body {
   width: 100%;
 }
 
-.pineapple-avatar {
-  width: 100%;
-  line-height: 0;
-}
-
-.pineapple-avatar__stage {
-  position: relative;
-  width: 100%;
-  transform-origin: 50% 70%;
-  will-change: transform;
-}
-
-.pineapple-avatar__art {
-  width: 100%;
-  height: auto;
-  display: block;
-  user-select: none;
-  pointer-events: none;
-}
-
-.pineapple-avatar__face {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-  shape-rendering: geometricPrecision;
-}
-
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -129,6 +99,10 @@ body {
   background: var(--sun);
   color: var(--ink);
   border-color: var(--sun);
+}
+
+.controls--style {
+  margin-top: -0.35rem;
 }
 
 .sliders {

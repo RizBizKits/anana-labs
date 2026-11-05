@@ -1,8 +1,11 @@
+import type { RenderStyle } from "./pineappleAvatar";
+
 export interface AvatarSettings {
   eyeThickness: number;
   eyeHeight: number;
   mouthThickness: number;
   wobble: number;
+  style: RenderStyle;
 }
 
 export const DEFAULT_SETTINGS: AvatarSettings = {
@@ -10,6 +13,7 @@ export const DEFAULT_SETTINGS: AvatarSettings = {
   eyeHeight: 1,
   mouthThickness: 0.9,
   wobble: 0.7,
+  style: "solid",
 };
 
 const STORAGE_KEY = "pineapple-avatar-settings";
@@ -24,6 +28,10 @@ function num(value: string | null | undefined, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function styleOf(value: string | null | undefined, fallback: RenderStyle): RenderStyle {
+  return value === "flat" || value === "solid" ? value : fallback;
+}
+
 export function normalizeSettings(
   partial: Partial<AvatarSettings> = {},
 ): AvatarSettings {
@@ -36,6 +44,7 @@ export function normalizeSettings(
       2.5,
     ),
     wobble: clamp(partial.wobble ?? DEFAULT_SETTINGS.wobble, 0, 2),
+    style: styleOf(partial.style, DEFAULT_SETTINGS.style),
   };
 }
 
@@ -45,6 +54,7 @@ export function settingsToQuery(settings: AvatarSettings): string {
     eyeH: settings.eyeHeight.toFixed(2),
     mouth: settings.mouthThickness.toFixed(2),
     wobble: settings.wobble.toFixed(2),
+    style: settings.style,
   });
   return q.toString();
 }
@@ -69,6 +79,7 @@ function fromSearch(search: string): Partial<AvatarSettings> {
     eyeHeight: num(q.get("eyeH"), DEFAULT_SETTINGS.eyeHeight),
     mouthThickness: num(q.get("mouth"), DEFAULT_SETTINGS.mouthThickness),
     wobble: num(q.get("wobble"), DEFAULT_SETTINGS.wobble),
+    style: styleOf(q.get("style"), DEFAULT_SETTINGS.style),
   };
 }
 
@@ -86,11 +97,12 @@ function fromStorage(): Partial<AvatarSettings> {
 export function loadSettings(search = window.location.search): AvatarSettings {
   const stored = fromStorage();
   const queried = search.includes("=") ? fromSearch(search) : {};
-  // If the URL carries any known keys, prefer those values over storage.
+  const q = new URLSearchParams(search);
   const hasQuery =
-    new URLSearchParams(search).has("eye") ||
-    new URLSearchParams(search).has("eyeH") ||
-    new URLSearchParams(search).has("mouth") ||
-    new URLSearchParams(search).has("wobble");
+    q.has("eye") ||
+    q.has("eyeH") ||
+    q.has("mouth") ||
+    q.has("wobble") ||
+    q.has("style");
   return normalizeSettings(hasQuery ? { ...stored, ...queried } : stored);
 }
