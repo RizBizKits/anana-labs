@@ -4,9 +4,9 @@ export interface PineappleAvatarOptions {
   mood?: Mood;
   followPointer?: boolean;
   label?: string;
-  /** Eye stroke / pill thickness multiplier. 1 = default. */
+  /** Horizontal thickness of the eye pills / strokes. 1 = default. */
   eyeThickness?: number;
-  /** Mouth stroke thickness multiplier. 1 = default. */
+  /** Stroke thickness of the mouth. 1 = default. */
   mouthThickness?: number;
 }
 
@@ -22,31 +22,40 @@ const FACE = {
   left: { x: 0.3494, y: 0.5821 },
   right: { x: 0.6044, y: 0.575 },
   mouth: { x: 0.4799, y: 0.6592 },
-  eyeW: 0.042,
+  /** Base eye height as fraction of art height */
   eyeH: 0.1,
 };
 
+/** Vertical pill — same shape for idle + thinking (thinking only shifts glance). */
+function pillEye(side: "left" | "right", thickness: number, glanceX = 0): string {
+  const id = side === "left" ? "L" : "R";
+  const t = Math.max(0.25, thickness);
+  // thickness = horizontal width of the pill in local units
+  const w = 2.2 + 7.5 * t;
+  const h = 18;
+  const x = glanceX - w / 2;
+  return `<rect class="eye eye-${id}" x="${x.toFixed(2)}" y="${(-h / 2).toFixed(2)}" width="${w.toFixed(2)}" height="${h}" rx="${(w / 2).toFixed(2)}" fill="#111"/>`;
+}
+
 function eyeMarkup(mood: Mood, side: "left" | "right", thickness: number): string {
   const id = side === "left" ? "L" : "R";
-  const t = Math.max(0.35, thickness);
+  const t = Math.max(0.25, thickness);
   if (mood === "happy") {
-    const sw = (3.2 * t).toFixed(2);
+    // stroke width tracks the same thickness control as pill width
+    const sw = (1.6 + 4.2 * t).toFixed(2);
     return `<path class="eye eye-${id}" d="M -8 3 Q 0 -9 8 3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
   }
   if (mood === "thinking") {
-    const ox = side === "left" ? 2.8 : 3.8;
-    const rx = (3.2 * t).toFixed(2);
-    const ry = (7.2 * Math.min(1.35, 0.75 + t * 0.25)).toFixed(2);
-    return `<ellipse class="eye eye-${id}" cx="${ox}" cy="-1" rx="${rx}" ry="${ry}" fill="#111"/>`;
+    // same pills as idle — glance up-right, not ellipses
+    const glance = side === "left" ? 3.2 : 4.2;
+    return pillEye(side, thickness, glance);
   }
-  const w = 6.4 * t;
-  const h = 18;
-  return `<rect class="eye eye-${id}" x="${(-w / 2).toFixed(2)}" y="${(-h / 2).toFixed(2)}" width="${w.toFixed(2)}" height="${h}" rx="${(w / 2).toFixed(2)}" fill="#111"/>`;
+  return pillEye(side, thickness, 0);
 }
 
 function mouthMarkup(mood: Mood, thickness: number): string {
-  const t = Math.max(0.35, thickness);
-  const sw = (2.6 * t).toFixed(2);
+  const t = Math.max(0.25, thickness);
+  const sw = (1.2 + 3.6 * t).toFixed(2);
   if (mood === "happy") {
     return `<path class="mouth" d="M -11 0 Q 0 11 11 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
   }
@@ -65,12 +74,13 @@ function renderFace(
 ): string {
   const gx = gazeX * 5;
   const gy = gazeY * 4;
-  const { left, right, mouth, eyeW, eyeH } = FACE;
+  const { left, right, mouth, eyeH } = FACE;
   const to = (p: { x: number; y: number }) => ({ x: p.x * 100, y: p.y * 100 });
   const L = to(left);
   const R = to(right);
   const M = to(mouth);
-  const eyeScale = (eyeW * 100) / 9;
+  // Scale so local height 18 ≈ eyeH of the viewBox; width is controlled only by thickness
+  const eyeScale = (eyeH * 100) / 18;
   const mouthScale = (eyeH * 100) / 20;
 
   return `

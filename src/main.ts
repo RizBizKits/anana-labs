@@ -31,14 +31,14 @@ app.innerHTML = `
           `<button type="button" data-mood="${m.id}" aria-pressed="${i === 0}">${m.label}</button>`,
       ).join("")}
     </div>
-    <div class="sliders" role="group" aria-label="Face thickness">
+    <div class="sliders" role="group" aria-label="Face width">
       <label class="slider">
-        <span>Eye thickness <output id="eye-out">${DEFAULT_EYE.toFixed(2)}</output></span>
-        <input id="eye-thickness" type="range" min="0.4" max="2" step="0.05" value="${DEFAULT_EYE}" />
+        <span>Eye width <output id="eye-out">${DEFAULT_EYE.toFixed(2)}</output></span>
+        <input id="eye-thickness" type="range" min="0.25" max="2.5" step="0.05" value="${DEFAULT_EYE}" />
       </label>
       <label class="slider">
-        <span>Mouth thickness <output id="mouth-out">${DEFAULT_MOUTH.toFixed(2)}</output></span>
-        <input id="mouth-thickness" type="range" min="0.4" max="2" step="0.05" value="${DEFAULT_MOUTH}" />
+        <span>Mouth width <output id="mouth-out">${DEFAULT_MOUTH.toFixed(2)}</output></span>
+        <input id="mouth-thickness" type="range" min="0.25" max="2.5" step="0.05" value="${DEFAULT_MOUTH}" />
       </label>
     </div>
     <div class="meta">
