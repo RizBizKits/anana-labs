@@ -13,54 +13,54 @@ export interface PineappleAvatarHandle {
 
 /** Eye / mouth anchors as fractions of the cropped base art. */
 const FACE = {
-  left: { x: 0.3585, y: 0.5793 },
-  right: { x: 0.5981, y: 0.5726 },
-  mouth: { x: 0.4811, y: 0.6532 },
-  /** Eye pill size relative to art width */
-  eyeW: 0.038,
-  eyeH: 0.095,
+  left: { x: 0.3541, y: 0.581 },
+  right: { x: 0.6012, y: 0.5742 },
+  mouth: { x: 0.4805, y: 0.6566 },
+  /** Eye pill size relative to art width / height */
+  eyeW: 0.055,
+  eyeH: 0.11,
 };
 
 function eyeMarkup(mood: Mood, side: "left" | "right"): string {
   const id = side === "left" ? "L" : "R";
   if (mood === "happy") {
-    return `<path class="eye eye-${id}" d="M -7 2 Q 0 -8 7 2" fill="none" stroke="#111" stroke-width="3.2" stroke-linecap="round"/>`;
+    return `<path class="eye eye-${id}" d="M -8 3 Q 0 -9 8 3" fill="none" stroke="#111" stroke-width="5.5" stroke-linecap="round"/>`;
   }
   if (mood === "thinking") {
-    // smaller offset pupils / focused look
-    const ox = side === "left" ? 2.5 : 3.5;
-    return `<ellipse class="eye eye-${id}" cx="${ox}" cy="-1" rx="3.2" ry="7.5" fill="#111"/>`;
+    const ox = side === "left" ? 2.8 : 3.8;
+    return `<ellipse class="eye eye-${id}" cx="${ox}" cy="-1" rx="4.6" ry="8.5" fill="#111"/>`;
   }
-  // idle — vertical pills matching the original art
-  return `<rect class="eye eye-${id}" x="-3.2" y="-9" width="6.4" height="18" rx="3.2" fill="#111"/>`;
+  // idle — chunky vertical pills like the source art
+  return `<rect class="eye eye-${id}" x="-4.5" y="-10" width="9" height="20" rx="4.5" fill="#111"/>`;
 }
 
 function mouthMarkup(mood: Mood): string {
   if (mood === "happy") {
-    return `<path class="mouth" d="M -10 0 Q 0 10 10 0" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round"/>`;
+    return `<path class="mouth" d="M -11 0 Q 0 11 11 0" fill="none" stroke="#111" stroke-width="4.8" stroke-linecap="round"/>`;
   }
   if (mood === "thinking") {
-    return `<path class="mouth" d="M -6 2 Q 0 0 6 3" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>`;
+    return `<path class="mouth" d="M -7 2 Q 0 0 7 3" fill="none" stroke="#111" stroke-width="4.4" stroke-linecap="round"/>`;
   }
-  return `<path class="mouth" d="M -8 0 Q 0 7 8 0" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>`;
+  return `<path class="mouth" d="M -9 0 Q 0 8 9 0" fill="none" stroke="#111" stroke-width="4.4" stroke-linecap="round"/>`;
 }
 
 function renderFace(mood: Mood, gazeX: number, gazeY: number): string {
   const gx = gazeX * 5;
   const gy = gazeY * 4;
   const { left, right, mouth, eyeW, eyeH } = FACE;
-  // SVG overlay uses viewBox 0 0 100 100 matching the art box
   const to = (p: { x: number; y: number }) => ({ x: p.x * 100, y: p.y * 100 });
   const L = to(left);
   const R = to(right);
   const M = to(mouth);
-  const scale = eyeW * 100; // ~3.8 → scale eyes in local units where pill is ~6.4 wide
+  // Local eye drawing is 9 units wide; scale to FACE.eyeW of the viewBox
+  const eyeScale = (eyeW * 100) / 9;
+  const mouthScale = (eyeH * 100) / 20;
 
   return `
     <g class="gaze" transform="translate(${gx} ${gy})">
-      <g transform="translate(${L.x} ${L.y}) scale(${(scale / 6.4).toFixed(3)})">${eyeMarkup(mood, "left")}</g>
-      <g transform="translate(${R.x} ${R.y}) scale(${(scale / 6.4).toFixed(3)})">${eyeMarkup(mood, "right")}</g>
-      <g transform="translate(${M.x} ${M.y}) scale(${(eyeH * 100 / 18).toFixed(3)})">${mouthMarkup(mood)}</g>
+      <g transform="translate(${L.x} ${L.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "left")}</g>
+      <g transform="translate(${R.x} ${R.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "right")}</g>
+      <g transform="translate(${M.x} ${M.y}) scale(${mouthScale.toFixed(3)})">${mouthMarkup(mood)}</g>
     </g>
   `;
 }
