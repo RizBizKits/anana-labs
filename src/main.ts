@@ -13,6 +13,7 @@ const MOODS: { id: Mood; label: string }[] = [
 
 const DEFAULT_EYE = 0.85;
 const DEFAULT_MOUTH = 0.9;
+const DEFAULT_WOBBLE = 0.7;
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
@@ -31,7 +32,7 @@ app.innerHTML = `
           `<button type="button" data-mood="${m.id}" aria-pressed="${i === 0}">${m.label}</button>`,
       ).join("")}
     </div>
-    <div class="sliders" role="group" aria-label="Face width">
+    <div class="sliders" role="group" aria-label="Avatar controls">
       <label class="slider">
         <span>Eye width <output id="eye-out">${DEFAULT_EYE.toFixed(2)}</output></span>
         <input id="eye-thickness" type="range" min="0.25" max="2.5" step="0.05" value="${DEFAULT_EYE}" />
@@ -39,6 +40,10 @@ app.innerHTML = `
       <label class="slider">
         <span>Mouth width <output id="mouth-out">${DEFAULT_MOUTH.toFixed(2)}</output></span>
         <input id="mouth-thickness" type="range" min="0.25" max="2.5" step="0.05" value="${DEFAULT_MOUTH}" />
+      </label>
+      <label class="slider">
+        <span>Blob wobble <output id="wobble-out">${DEFAULT_WOBBLE.toFixed(2)}</output></span>
+        <input id="wobble" type="range" min="0" max="2" step="0.05" value="${DEFAULT_WOBBLE}" />
       </label>
     </div>
     <div class="meta">
@@ -53,8 +58,10 @@ const status = document.querySelector<HTMLParagraphElement>("#status")!;
 const buttons = [...document.querySelectorAll<HTMLButtonElement>("[data-mood]")];
 const eyeInput = document.querySelector<HTMLInputElement>("#eye-thickness")!;
 const mouthInput = document.querySelector<HTMLInputElement>("#mouth-thickness")!;
+const wobbleInput = document.querySelector<HTMLInputElement>("#wobble")!;
 const eyeOut = document.querySelector<HTMLOutputElement>("#eye-out")!;
 const mouthOut = document.querySelector<HTMLOutputElement>("#mouth-out")!;
+const wobbleOut = document.querySelector<HTMLOutputElement>("#wobble-out")!;
 
 const avatar = mountPineappleAvatar(host, {
   mood: "idle",
@@ -62,6 +69,7 @@ const avatar = mountPineappleAvatar(host, {
   label: "Pineapple",
   eyeThickness: DEFAULT_EYE,
   mouthThickness: DEFAULT_MOUTH,
+  wobble: DEFAULT_WOBBLE,
 });
 
 function setMood(mood: Mood) {
@@ -72,19 +80,22 @@ function setMood(mood: Mood) {
   }
 }
 
-function syncThickness() {
+function syncControls() {
   const eyeThickness = Number(eyeInput.value);
   const mouthThickness = Number(mouthInput.value);
+  const wobble = Number(wobbleInput.value);
   eyeOut.value = eyeThickness.toFixed(2);
   mouthOut.value = mouthThickness.toFixed(2);
-  avatar.update({ eyeThickness, mouthThickness });
+  wobbleOut.value = wobble.toFixed(2);
+  avatar.update({ eyeThickness, mouthThickness, wobble });
 }
 
 for (const btn of buttons) {
   btn.addEventListener("click", () => setMood(btn.dataset.mood as Mood));
 }
-eyeInput.addEventListener("input", syncThickness);
-mouthInput.addEventListener("input", syncThickness);
+eyeInput.addEventListener("input", syncControls);
+mouthInput.addEventListener("input", syncControls);
+wobbleInput.addEventListener("input", syncControls);
 
 declare global {
   interface Window {

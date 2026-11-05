@@ -8,12 +8,17 @@ export interface PineappleAvatarOptions {
   eyeThickness?: number;
   /** Stroke thickness of the mouth. 1 = default. */
   mouthThickness?: number;
+  /** Fluid blob wobble amount. 0 = still, 1 = gentle, 2 = gooey. */
+  wobble?: number;
 }
 
 export interface PineappleAvatarHandle {
   update(options: Partial<PineappleAvatarOptions>): void;
   getOptions(): Required<
-    Pick<PineappleAvatarOptions, "mood" | "eyeThickness" | "mouthThickness" | "followPointer">
+    Pick<
+      PineappleAvatarOptions,
+      "mood" | "eyeThickness" | "mouthThickness" | "followPointer" | "wobble"
+    >
   >;
   destroy(): void;
 }
@@ -22,15 +27,14 @@ const FACE = {
   left: { x: 0.3494, y: 0.5821 },
   right: { x: 0.6044, y: 0.575 },
   mouth: { x: 0.4799, y: 0.6592 },
-  /** Base eye height as fraction of art height */
   eyeH: 0.1,
 };
 
-/** Vertical pill — same shape for idle + thinking (thinking only shifts glance). */
+const WOBBLE_FILTER_ID = "pineapple-blob-wobble";
+
 function pillEye(side: "left" | "right", thickness: number, glanceX = 0): string {
   const id = side === "left" ? "L" : "R";
   const t = Math.max(0.25, thickness);
-  // thickness = horizontal width of the pill in local units
   const w = 2.2 + 7.5 * t;
   const h = 18;
   const x = glanceX - w / 2;
@@ -41,12 +45,10 @@ function eyeMarkup(mood: Mood, side: "left" | "right", thickness: number): strin
   const id = side === "left" ? "L" : "R";
   const t = Math.max(0.25, thickness);
   if (mood === "happy") {
-    // stroke width tracks the same thickness control as pill width
     const sw = (1.6 + 4.2 * t).toFixed(2);
     return `<path class="eye eye-${id}" d="M -8 3 Q 0 -9 8 3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
   }
   if (mood === "thinking") {
-    // same pills as idle — glance up-right, not ellipses
     const glance = side === "left" ? 3.2 : 4.2;
     return pillEye(side, thickness, glance);
   }
@@ -79,7 +81,6 @@ function renderFace(
   const L = to(left);
   const R = to(right);
   const M = to(mouth);
-  // Scale so local height 18 ≈ eyeH of the viewBox; width is controlled only by thickness
   const eyeScale = (eyeH * 100) / 18;
   const mouthScale = (eyeH * 100) / 20;
 
@@ -92,6 +93,10 @@ function renderFace(
   `;
 }
 
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
+
 export function mountPineappleAvatar(
   host: HTMLElement,
   initial: PineappleAvatarOptions = {},
@@ -100,16 +105,34 @@ export function mountPineappleAvatar(
   let followPointer = initial.followPointer ?? true;
   let eyeThickness = initial.eyeThickness ?? 1;
   let mouthThickness = initial.mouthThickness ?? 1;
+  let wobble = initial.wobble ?? 0.7;
   let gazeX = 0;
   let gazeY = 0;
   let raf = 0;
   let targetX = 0;
   let targetY = 0;
+  const reduced = prefersReducedMotion();
 
   host.replaceChildren();
   host.classList.add("pineapple-avatar");
   host.setAttribute("role", "img");
   host.setAttribute("aria-label", initial.label ?? "Pineapple");
+
+  // Hidden SVG filter defs for liquid displacement
+  const filterSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  filterSvg.classList.add("pineapple-avatar__filters");
+  filterSvg.setAttribute("aria-hidden", "true");
+  filterSvg.innerHTML = `
+    <defs>
+      <filter id="${WOBBLE_FILTER_ID}" x="-12%" y="-12%" width="124%" height="124%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="2" result="noise">
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+  `;
+  const turbulence = filterSvg.querySelector("feTurbulence")!;
+  const displacement = filterSvg.querySelector("feDisplacementMap")!;
 
   const stage = document.createElement("div");
   stage.className = "pineapple-avatar__stage";
@@ -126,16 +149,41 @@ export function mountPineappleAvatar(
   svg.setAttribute("aria-hidden", "true");
 
   stage.append(img, svg);
-  host.append(stage);
+  host.append(filterSvg, stage);
 
-  const paint = () => {
+  const paintFace = () => {
     svg.innerHTML = renderFace(mood, gazeX, gazeY, eyeThickness, mouthThickness);
+  };
+
+  const applyWobble = (timeSec: number) => {
+    const amount = reduced ? 0 : Math.max(0, wobble);
+
+    // Soft jelly squash / slide — whole body including face
+    const bob = Math.sin(timeSec * 2.2) * (4 + amount * 3);
+    const sx = 1 + Math.sin(timeSec * 2.05) * 0.018 * amount;
+    const sy = 1 + Math.cos(timeSec * 2.35) * 0.028 * amount;
+    const skew = Math.sin(timeSec * 1.55) * 2.4 * amount;
+    const slideX = Math.sin(timeSec * 1.1) * 3.5 * amount;
+    stage.style.transform = `translate(${slideX.toFixed(2)}px, ${bob.toFixed(2)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)}) skewX(${skew.toFixed(2)}deg)`;
+
+    // Fluid edge displacement — drift noise by easing baseFrequency (no seed jumps)
+    if (amount < 0.02) {
+      stage.style.filter = "none";
+      displacement.setAttribute("scale", "0");
+      return;
+    }
+    const freqX = 0.01 + amount * 0.005 + Math.sin(timeSec * 0.65) * 0.003 * amount;
+    const freqY = 0.014 + amount * 0.007 + Math.cos(timeSec * 0.55) * 0.004 * amount;
+    turbulence.setAttribute("baseFrequency", `${Math.max(0.004, freqX).toFixed(4)} ${Math.max(0.004, freqY).toFixed(4)}`);
+    displacement.setAttribute("scale", (amount * 10).toFixed(2));
+    stage.style.filter = `url(#${WOBBLE_FILTER_ID})`;
   };
 
   const tick = () => {
     gazeX += (targetX - gazeX) * 0.14;
     gazeY += (targetY - gazeY) * 0.14;
-    paint();
+    paintFace();
+    applyWobble(performance.now() / 1000);
     raf = requestAnimationFrame(tick);
   };
 
@@ -148,7 +196,7 @@ export function mountPineappleAvatar(
     targetY = Math.max(-1, Math.min(1, (e.clientY - cy) / (rect.height * 0.6)));
   };
 
-  paint();
+  paintFace();
   raf = requestAnimationFrame(tick);
   window.addEventListener("pointermove", onPointer);
 
@@ -158,15 +206,16 @@ export function mountPineappleAvatar(
       if (options.followPointer !== undefined) followPointer = options.followPointer;
       if (options.eyeThickness !== undefined) eyeThickness = options.eyeThickness;
       if (options.mouthThickness !== undefined) mouthThickness = options.mouthThickness;
+      if (options.wobble !== undefined) wobble = options.wobble;
       if (options.label !== undefined) host.setAttribute("aria-label", options.label);
       if (!followPointer) {
         targetX = 0;
         targetY = 0;
       }
-      paint();
+      paintFace();
     },
     getOptions() {
-      return { mood, eyeThickness, mouthThickness, followPointer };
+      return { mood, eyeThickness, mouthThickness, followPointer, wobble };
     },
     destroy() {
       cancelAnimationFrame(raf);

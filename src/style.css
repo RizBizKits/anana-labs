@@ -87,10 +87,18 @@ body {
   line-height: 0;
 }
 
+.pineapple-avatar__filters {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
 .pineapple-avatar__stage {
   position: relative;
   width: 100%;
-  animation: bob 3.6s ease-in-out infinite;
+  transform-origin: 50% 70%;
+  will-change: transform, filter;
 }
 
 .pineapple-avatar__art {
@@ -99,7 +107,6 @@ body {
   display: block;
   user-select: none;
   pointer-events: none;
-  /* Avoid light fringing when the browser scales the cutout */
   image-rendering: auto;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
@@ -112,22 +119,6 @@ body {
   height: 100%;
   overflow: visible;
   pointer-events: none;
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pineapple-avatar__stage {
-    animation: none;
-  }
 }
 
 .controls {
