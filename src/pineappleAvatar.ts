@@ -8,7 +8,7 @@ export interface PineappleAvatarOptions {
   eyeThickness?: number;
   /** Stroke thickness of the mouth. 1 = default. */
   mouthThickness?: number;
-  /** Fluid blob wobble for outer body + leaves only. 0 = still. */
+  /** Jelly wobble amount for the whole pineapple. 0 = still. */
   wobble?: number;
 }
 
@@ -24,13 +24,11 @@ export interface PineappleAvatarHandle {
 }
 
 const FACE = {
-  left: { x: 0.3536, y: 0.5815 },
-  right: { x: 0.6031, y: 0.5746 },
-  mouth: { x: 0.4813, y: 0.6575 },
+  left: { x: 0.3524, y: 0.5809 },
+  right: { x: 0.6024, y: 0.574 },
+  mouth: { x: 0.4803, y: 0.657 },
   eyeH: 0.1,
 };
-
-const WOBBLE_FILTER_ID = "pineapple-blob-wobble";
 
 function pillEye(side: "left" | "right", thickness: number, glanceX = 0): string {
   const id = side === "left" ? "L" : "R";
@@ -121,39 +119,19 @@ export function mountPineappleAvatar(
   const stage = document.createElement("div");
   stage.className = "pineapple-avatar__stage";
 
-  // Layer 1: yellow body + leaves — ONLY this wobbles (CSS jelly, no displacement filter —
-  // feDisplacementMap was leaving ghost outlines around the fixed face)
-  const bodyWrap = document.createElement("div");
-  bodyWrap.className = "pineapple-avatar__body";
-  const bodyImg = document.createElement("img");
-  bodyImg.className = "pineapple-avatar__art";
-  bodyImg.src = new URL("./assets/pineapple-body.png", import.meta.url).href;
-  bodyImg.alt = "";
-  bodyImg.draggable = false;
-  bodyWrap.append(bodyImg);
+  const art = document.createElement("img");
+  art.className = "pineapple-avatar__art";
+  art.src = new URL("./assets/pineapple.png", import.meta.url).href;
+  art.alt = "";
+  art.draggable = false;
 
-  // Layer 2: static yellow face plate under eyes/mouth
-  const facePlate = document.createElement("img");
-  facePlate.className = "pineapple-avatar__art pineapple-avatar__faceplate";
-  facePlate.src = new URL("./assets/pineapple-faceplate.png", import.meta.url).href;
-  facePlate.alt = "";
-  facePlate.draggable = false;
-
-  // Layer 3: lattice, white V, sparkles — static
-  const detailsImg = document.createElement("img");
-  detailsImg.className = "pineapple-avatar__art pineapple-avatar__details";
-  detailsImg.src = new URL("./assets/pineapple-details.png", import.meta.url).href;
-  detailsImg.alt = "";
-  detailsImg.draggable = false;
-
-  // Layer 4: eyes / mouth — static positions, mood only
   const face = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   face.classList.add("pineapple-avatar__face");
   face.setAttribute("viewBox", "0 0 100 100");
   face.setAttribute("aria-hidden", "true");
   face.setAttribute("shape-rendering", "geometricPrecision");
 
-  stage.append(bodyWrap, facePlate, detailsImg, face);
+  stage.append(art, face);
   host.append(stage);
 
   const paintFace = () => {
@@ -162,27 +140,20 @@ export function mountPineappleAvatar(
 
   const applyWobble = (timeSec: number) => {
     const amount = reduced ? 0 : Math.max(0, wobble);
-
-    // Gentle bob on the whole avatar
-    const bob = Math.sin(timeSec * 2.2) * 4;
-    stage.style.transform = `translateY(${bob.toFixed(2)}px)`;
-
-    // Blobby jelly on body/leaves only — layered harmonics for a fluid slide
+    const bob = Math.sin(timeSec * 2.2) * (4 + amount * 2);
     const sx =
       1 +
-      Math.sin(timeSec * 2.05) * 0.028 * amount +
+      Math.sin(timeSec * 2.05) * 0.03 * amount +
       Math.sin(timeSec * 3.4) * 0.012 * amount;
     const sy =
       1 +
-      Math.cos(timeSec * 2.35) * 0.04 * amount +
+      Math.cos(timeSec * 2.35) * 0.042 * amount +
       Math.cos(timeSec * 4.1) * 0.014 * amount;
     const skew =
-      Math.sin(timeSec * 1.55) * 3.2 * amount + Math.sin(timeSec * 2.8) * 1.2 * amount;
+      Math.sin(timeSec * 1.55) * 3.4 * amount + Math.sin(timeSec * 2.8) * 1.2 * amount;
     const slideX =
       Math.sin(timeSec * 1.1) * 5 * amount + Math.sin(timeSec * 2.6) * 1.8 * amount;
-    const slideY = Math.cos(timeSec * 1.35) * 2.4 * amount;
-    bodyWrap.style.transform = `translate(${slideX.toFixed(2)}px, ${slideY.toFixed(2)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)}) skewX(${skew.toFixed(2)}deg)`;
-    bodyWrap.style.filter = "none";
+    stage.style.transform = `translate(${slideX.toFixed(2)}px, ${bob.toFixed(2)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)}) skewX(${skew.toFixed(2)}deg)`;
   };
 
   const tick = () => {

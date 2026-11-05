@@ -20,8 +20,8 @@ app.innerHTML = `
   <main class="stage">
     <h1 class="brand">Pineapple</h1>
     <p class="lede">
-      Your full-color pineapple art, with mood eyes for an AI companion —
-      green leaves, grid vest, and sparkles preserved.
+      Your full-color pineapple art with mood eyes, width controls, and a jelly
+      wobble for an AI companion.
     </p>
     <div class="avatar-shell" aria-label="Pineapple avatar preview">
       <div id="bot"></div>
