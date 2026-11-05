@@ -118,6 +118,7 @@ body {
   backface-visibility: hidden;
 }
 
+.pineapple-avatar__faceplate,
 .pineapple-avatar__details,
 .pineapple-avatar__face {
   position: absolute;
@@ -129,6 +130,8 @@ body {
 
 .pineapple-avatar__face {
   overflow: visible;
+  /* crisp strokes — avoid light fringe around SVG eyes/mouth */
+  shape-rendering: geometricPrecision;
 }
 
 .controls {

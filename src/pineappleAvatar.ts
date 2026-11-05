@@ -145,20 +145,27 @@ export function mountPineappleAvatar(
   bodyImg.draggable = false;
   bodyWrap.append(bodyImg);
 
-  // Layer 2: lattice, white V, sparkles — static
+  // Layer 2: static yellow face plate — covers wobble under eyes/mouth (kills ghost outlines)
+  const facePlate = document.createElement("img");
+  facePlate.className = "pineapple-avatar__art pineapple-avatar__faceplate";
+  facePlate.src = new URL("./assets/pineapple-faceplate.png", import.meta.url).href;
+  facePlate.alt = "";
+  facePlate.draggable = false;
+
+  // Layer 3: lattice, white V, sparkles — static
   const detailsImg = document.createElement("img");
   detailsImg.className = "pineapple-avatar__art pineapple-avatar__details";
   detailsImg.src = new URL("./assets/pineapple-details.png", import.meta.url).href;
   detailsImg.alt = "";
   detailsImg.draggable = false;
 
-  // Layer 3: eyes / mouth — static positions, mood only
+  // Layer 4: eyes / mouth — static positions, mood only
   const face = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   face.classList.add("pineapple-avatar__face");
   face.setAttribute("viewBox", "0 0 100 100");
   face.setAttribute("aria-hidden", "true");
 
-  stage.append(bodyWrap, detailsImg, face);
+  stage.append(bodyWrap, facePlate, detailsImg, face);
   host.append(filterSvg, stage);
 
   const paintFace = () => {
