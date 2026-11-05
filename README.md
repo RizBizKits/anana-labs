@@ -13,6 +13,9 @@ npm run dev
 
 Open the URL Vite prints (default [http://127.0.0.1:45291](http://127.0.0.1:45291)).
 
+Presentation strip of all four moods (no text or controls):
+[http://127.0.0.1:45291/preview.html](http://127.0.0.1:45291/preview.html)
+
 In Cursor Cloud Agents: use the **Ports** plug icon to forward `45291`, then open the forwarded localhost URL.
 
 ## Use on a website
