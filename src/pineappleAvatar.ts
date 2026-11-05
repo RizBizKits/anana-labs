@@ -6,6 +6,8 @@ export interface PineappleAvatarOptions {
   label?: string;
   /** Horizontal thickness of the eye pills / strokes. 1 = default. */
   eyeThickness?: number;
+  /** Vertical height of the eye pills / arcs. 1 = default. */
+  eyeHeight?: number;
   /** Stroke thickness of the mouth. 1 = default. */
   mouthThickness?: number;
   /** Jelly wobble amount for the whole pineapple. 0 = still. */
@@ -17,7 +19,12 @@ export interface PineappleAvatarHandle {
   getOptions(): Required<
     Pick<
       PineappleAvatarOptions,
-      "mood" | "eyeThickness" | "mouthThickness" | "followPointer" | "wobble"
+      | "mood"
+      | "eyeThickness"
+      | "eyeHeight"
+      | "mouthThickness"
+      | "followPointer"
+      | "wobble"
     >
   >;
   destroy(): void;
@@ -30,27 +37,40 @@ const FACE = {
   eyeH: 0.1,
 };
 
-function pillEye(side: "left" | "right", thickness: number, glanceX = 0): string {
+function pillEye(
+  side: "left" | "right",
+  thickness: number,
+  height: number,
+  glanceX = 0,
+): string {
   const id = side === "left" ? "L" : "R";
   const t = Math.max(0.25, thickness);
+  const hh = Math.max(0.25, height);
   const w = 2.2 + 7.5 * t;
-  const h = 18;
+  const h = 10 + 14 * hh;
   const x = glanceX - w / 2;
-  return `<rect class="eye eye-${id}" x="${x.toFixed(2)}" y="${(-h / 2).toFixed(2)}" width="${w.toFixed(2)}" height="${h}" rx="${(w / 2).toFixed(2)}" fill="#111"/>`;
+  return `<rect class="eye eye-${id}" x="${x.toFixed(2)}" y="${(-h / 2).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${(w / 2).toFixed(2)}" fill="#111"/>`;
 }
 
-function eyeMarkup(mood: Mood, side: "left" | "right", thickness: number): string {
+function eyeMarkup(
+  mood: Mood,
+  side: "left" | "right",
+  thickness: number,
+  height: number,
+): string {
   const id = side === "left" ? "L" : "R";
   const t = Math.max(0.25, thickness);
+  const hh = Math.max(0.25, height);
   if (mood === "happy") {
     const sw = (1.6 + 4.2 * t).toFixed(2);
-    return `<path class="eye eye-${id}" d="M -8 3 Q 0 -9 8 3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
+    const rise = (5 + 8 * hh).toFixed(2);
+    return `<path class="eye eye-${id}" d="M -8 3 Q 0 ${(-Number(rise) + 3).toFixed(2)} 8 3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
   }
   if (mood === "thinking") {
     const glance = side === "left" ? 3.2 : 4.2;
-    return pillEye(side, thickness, glance);
+    return pillEye(side, thickness, height, glance);
   }
-  return pillEye(side, thickness, 0);
+  return pillEye(side, thickness, height, 0);
 }
 
 function mouthMarkup(mood: Mood, thickness: number): string {
@@ -70,6 +90,7 @@ function renderFace(
   gazeX: number,
   gazeY: number,
   eyeThickness: number,
+  eyeHeight: number,
   mouthThickness: number,
 ): string {
   const gx = gazeX * 5;
@@ -84,8 +105,8 @@ function renderFace(
 
   return `
     <g class="gaze" transform="translate(${gx} ${gy})">
-      <g transform="translate(${L.x} ${L.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "left", eyeThickness)}</g>
-      <g transform="translate(${R.x} ${R.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "right", eyeThickness)}</g>
+      <g transform="translate(${L.x} ${L.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "left", eyeThickness, eyeHeight)}</g>
+      <g transform="translate(${R.x} ${R.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "right", eyeThickness, eyeHeight)}</g>
       <g transform="translate(${M.x} ${M.y}) scale(${mouthScale.toFixed(3)})">${mouthMarkup(mood, mouthThickness)}</g>
     </g>
   `;
@@ -102,6 +123,7 @@ export function mountPineappleAvatar(
   let mood: Mood = initial.mood ?? "idle";
   let followPointer = initial.followPointer ?? true;
   let eyeThickness = initial.eyeThickness ?? 1;
+  let eyeHeight = initial.eyeHeight ?? 1;
   let mouthThickness = initial.mouthThickness ?? 1;
   let wobble = initial.wobble ?? 0.7;
   let gazeX = 0;
@@ -135,7 +157,14 @@ export function mountPineappleAvatar(
   host.append(stage);
 
   const paintFace = () => {
-    face.innerHTML = renderFace(mood, gazeX, gazeY, eyeThickness, mouthThickness);
+    face.innerHTML = renderFace(
+      mood,
+      gazeX,
+      gazeY,
+      eyeThickness,
+      eyeHeight,
+      mouthThickness,
+    );
   };
 
   const applyWobble = (timeSec: number) => {
@@ -182,6 +211,7 @@ export function mountPineappleAvatar(
       if (options.mood) mood = options.mood;
       if (options.followPointer !== undefined) followPointer = options.followPointer;
       if (options.eyeThickness !== undefined) eyeThickness = options.eyeThickness;
+      if (options.eyeHeight !== undefined) eyeHeight = options.eyeHeight;
       if (options.mouthThickness !== undefined) mouthThickness = options.mouthThickness;
       if (options.wobble !== undefined) wobble = options.wobble;
       if (options.label !== undefined) host.setAttribute("aria-label", options.label);
@@ -192,7 +222,7 @@ export function mountPineappleAvatar(
       paintFace();
     },
     getOptions() {
-      return { mood, eyeThickness, mouthThickness, followPointer, wobble };
+      return { mood, eyeThickness, eyeHeight, mouthThickness, followPointer, wobble };
     },
     destroy() {
       cancelAnimationFrame(raf);

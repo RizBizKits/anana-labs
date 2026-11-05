@@ -12,6 +12,7 @@ const MOODS: { id: Mood; label: string }[] = [
 ];
 
 const DEFAULT_EYE = 0.85;
+const DEFAULT_EYE_HEIGHT = 1;
 const DEFAULT_MOUTH = 0.9;
 const DEFAULT_WOBBLE = 0.7;
 
@@ -38,6 +39,10 @@ app.innerHTML = `
         <input id="eye-thickness" type="range" min="0.25" max="2.5" step="0.05" value="${DEFAULT_EYE}" />
       </label>
       <label class="slider">
+        <span>Eye height <output id="eye-height-out">${DEFAULT_EYE_HEIGHT.toFixed(2)}</output></span>
+        <input id="eye-height" type="range" min="0.25" max="2.5" step="0.05" value="${DEFAULT_EYE_HEIGHT}" />
+      </label>
+      <label class="slider">
         <span>Mouth width <output id="mouth-out">${DEFAULT_MOUTH.toFixed(2)}</output></span>
         <input id="mouth-thickness" type="range" min="0.25" max="2.5" step="0.05" value="${DEFAULT_MOUTH}" />
       </label>
@@ -57,9 +62,11 @@ const host = document.querySelector<HTMLDivElement>("#bot")!;
 const status = document.querySelector<HTMLParagraphElement>("#status")!;
 const buttons = [...document.querySelectorAll<HTMLButtonElement>("[data-mood]")];
 const eyeInput = document.querySelector<HTMLInputElement>("#eye-thickness")!;
+const eyeHeightInput = document.querySelector<HTMLInputElement>("#eye-height")!;
 const mouthInput = document.querySelector<HTMLInputElement>("#mouth-thickness")!;
 const wobbleInput = document.querySelector<HTMLInputElement>("#wobble")!;
 const eyeOut = document.querySelector<HTMLOutputElement>("#eye-out")!;
+const eyeHeightOut = document.querySelector<HTMLOutputElement>("#eye-height-out")!;
 const mouthOut = document.querySelector<HTMLOutputElement>("#mouth-out")!;
 const wobbleOut = document.querySelector<HTMLOutputElement>("#wobble-out")!;
 
@@ -68,6 +75,7 @@ const avatar = mountPineappleAvatar(host, {
   followPointer: true,
   label: "Pineapple",
   eyeThickness: DEFAULT_EYE,
+  eyeHeight: DEFAULT_EYE_HEIGHT,
   mouthThickness: DEFAULT_MOUTH,
   wobble: DEFAULT_WOBBLE,
 });
@@ -82,18 +90,21 @@ function setMood(mood: Mood) {
 
 function syncControls() {
   const eyeThickness = Number(eyeInput.value);
+  const eyeHeight = Number(eyeHeightInput.value);
   const mouthThickness = Number(mouthInput.value);
   const wobble = Number(wobbleInput.value);
   eyeOut.value = eyeThickness.toFixed(2);
+  eyeHeightOut.value = eyeHeight.toFixed(2);
   mouthOut.value = mouthThickness.toFixed(2);
   wobbleOut.value = wobble.toFixed(2);
-  avatar.update({ eyeThickness, mouthThickness, wobble });
+  avatar.update({ eyeThickness, eyeHeight, mouthThickness, wobble });
 }
 
 for (const btn of buttons) {
   btn.addEventListener("click", () => setMood(btn.dataset.mood as Mood));
 }
 eyeInput.addEventListener("input", syncControls);
+eyeHeightInput.addEventListener("input", syncControls);
 mouthInput.addEventListener("input", syncControls);
 wobbleInput.addEventListener("input", syncControls);
 
