@@ -10,10 +10,7 @@ body {
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(1200px 700px at 70% -10%, rgba(245, 197, 24, 0.22), transparent 55%),
-    radial-gradient(900px 600px at 10% 100%, rgba(80, 140, 70, 0.18), transparent 50%),
-    linear-gradient(160deg, #2a1f0c, #1a1408 55%);
+  background: #1a1408;
 }
 
 #app {

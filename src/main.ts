@@ -18,11 +18,7 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
   <main class="stage">
     <h1 class="brand">Pineapple</h1>
-    <p class="lede">
-      Your full-color pineapple art with expressive moods, width controls, and a
-      jelly wobble for an AI companion.
-    </p>
-    <div class="avatar-shell" aria-label="Pineapple avatar preview">
+    <div class="avatar-shell" aria-label="Pineapple avatar">
       <div id="bot"></div>
     </div>
     <div class="controls" role="group" aria-label="Mood">
@@ -50,9 +46,8 @@ app.innerHTML = `
       </label>
     </div>
     <div class="meta">
-      <p>Move the pointer — the eyes follow. Call <code>setPineappleMood("love")</code> from your chat UI.</p>
-      <p class="status" id="status" aria-live="polite">Mood: idle</p>
-      <p><a class="preview-link" id="preview-link" href="${previewHref(initial)}">Open mood preview</a></p>
+      <p class="status" id="status" aria-live="polite">Idle</p>
+      <p><a class="preview-link" id="preview-link" href="${previewHref(initial)}">Preview</a></p>
     </div>
   </main>
 `;
