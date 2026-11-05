@@ -4,47 +4,65 @@ export interface PineappleAvatarOptions {
   mood?: Mood;
   followPointer?: boolean;
   label?: string;
+  /** Eye stroke / pill thickness multiplier. 1 = default. */
+  eyeThickness?: number;
+  /** Mouth stroke thickness multiplier. 1 = default. */
+  mouthThickness?: number;
 }
 
 export interface PineappleAvatarHandle {
   update(options: Partial<PineappleAvatarOptions>): void;
+  getOptions(): Required<
+    Pick<PineappleAvatarOptions, "mood" | "eyeThickness" | "mouthThickness" | "followPointer">
+  >;
   destroy(): void;
 }
 
-/** Eye / mouth anchors as fractions of the cropped base art. */
 const FACE = {
-  left: { x: 0.3541, y: 0.581 },
-  right: { x: 0.6012, y: 0.5742 },
-  mouth: { x: 0.4805, y: 0.6566 },
-  /** Eye pill size relative to art width / height */
-  eyeW: 0.055,
-  eyeH: 0.11,
+  left: { x: 0.35, y: 0.5818 },
+  right: { x: 0.604, y: 0.5748 },
+  mouth: { x: 0.48, y: 0.6588 },
+  eyeW: 0.042,
+  eyeH: 0.1,
 };
 
-function eyeMarkup(mood: Mood, side: "left" | "right"): string {
+function eyeMarkup(mood: Mood, side: "left" | "right", thickness: number): string {
   const id = side === "left" ? "L" : "R";
+  const t = Math.max(0.35, thickness);
   if (mood === "happy") {
-    return `<path class="eye eye-${id}" d="M -8 3 Q 0 -9 8 3" fill="none" stroke="#111" stroke-width="5.5" stroke-linecap="round"/>`;
+    const sw = (3.2 * t).toFixed(2);
+    return `<path class="eye eye-${id}" d="M -8 3 Q 0 -9 8 3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
   }
   if (mood === "thinking") {
     const ox = side === "left" ? 2.8 : 3.8;
-    return `<ellipse class="eye eye-${id}" cx="${ox}" cy="-1" rx="4.6" ry="8.5" fill="#111"/>`;
+    const rx = (3.2 * t).toFixed(2);
+    const ry = (7.2 * Math.min(1.35, 0.75 + t * 0.25)).toFixed(2);
+    return `<ellipse class="eye eye-${id}" cx="${ox}" cy="-1" rx="${rx}" ry="${ry}" fill="#111"/>`;
   }
-  // idle — chunky vertical pills like the source art
-  return `<rect class="eye eye-${id}" x="-4.5" y="-10" width="9" height="20" rx="4.5" fill="#111"/>`;
+  const w = 6.4 * t;
+  const h = 18;
+  return `<rect class="eye eye-${id}" x="${(-w / 2).toFixed(2)}" y="${(-h / 2).toFixed(2)}" width="${w.toFixed(2)}" height="${h}" rx="${(w / 2).toFixed(2)}" fill="#111"/>`;
 }
 
-function mouthMarkup(mood: Mood): string {
+function mouthMarkup(mood: Mood, thickness: number): string {
+  const t = Math.max(0.35, thickness);
+  const sw = (2.6 * t).toFixed(2);
   if (mood === "happy") {
-    return `<path class="mouth" d="M -11 0 Q 0 11 11 0" fill="none" stroke="#111" stroke-width="4.8" stroke-linecap="round"/>`;
+    return `<path class="mouth" d="M -11 0 Q 0 11 11 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
   }
   if (mood === "thinking") {
-    return `<path class="mouth" d="M -7 2 Q 0 0 7 3" fill="none" stroke="#111" stroke-width="4.4" stroke-linecap="round"/>`;
+    return `<path class="mouth" d="M -7 2 Q 0 0 7 3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
   }
-  return `<path class="mouth" d="M -9 0 Q 0 8 9 0" fill="none" stroke="#111" stroke-width="4.4" stroke-linecap="round"/>`;
+  return `<path class="mouth" d="M -9 0 Q 0 8 9 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
 }
 
-function renderFace(mood: Mood, gazeX: number, gazeY: number): string {
+function renderFace(
+  mood: Mood,
+  gazeX: number,
+  gazeY: number,
+  eyeThickness: number,
+  mouthThickness: number,
+): string {
   const gx = gazeX * 5;
   const gy = gazeY * 4;
   const { left, right, mouth, eyeW, eyeH } = FACE;
@@ -52,15 +70,14 @@ function renderFace(mood: Mood, gazeX: number, gazeY: number): string {
   const L = to(left);
   const R = to(right);
   const M = to(mouth);
-  // Local eye drawing is 9 units wide; scale to FACE.eyeW of the viewBox
   const eyeScale = (eyeW * 100) / 9;
   const mouthScale = (eyeH * 100) / 20;
 
   return `
     <g class="gaze" transform="translate(${gx} ${gy})">
-      <g transform="translate(${L.x} ${L.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "left")}</g>
-      <g transform="translate(${R.x} ${R.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "right")}</g>
-      <g transform="translate(${M.x} ${M.y}) scale(${mouthScale.toFixed(3)})">${mouthMarkup(mood)}</g>
+      <g transform="translate(${L.x} ${L.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "left", eyeThickness)}</g>
+      <g transform="translate(${R.x} ${R.y}) scale(${eyeScale.toFixed(3)})">${eyeMarkup(mood, "right", eyeThickness)}</g>
+      <g transform="translate(${M.x} ${M.y}) scale(${mouthScale.toFixed(3)})">${mouthMarkup(mood, mouthThickness)}</g>
     </g>
   `;
 }
@@ -71,6 +88,8 @@ export function mountPineappleAvatar(
 ): PineappleAvatarHandle {
   let mood: Mood = initial.mood ?? "idle";
   let followPointer = initial.followPointer ?? true;
+  let eyeThickness = initial.eyeThickness ?? 1;
+  let mouthThickness = initial.mouthThickness ?? 1;
   let gazeX = 0;
   let gazeY = 0;
   let raf = 0;
@@ -100,7 +119,7 @@ export function mountPineappleAvatar(
   host.append(stage);
 
   const paint = () => {
-    svg.innerHTML = renderFace(mood, gazeX, gazeY);
+    svg.innerHTML = renderFace(mood, gazeX, gazeY, eyeThickness, mouthThickness);
   };
 
   const tick = () => {
@@ -127,12 +146,17 @@ export function mountPineappleAvatar(
     update(options) {
       if (options.mood) mood = options.mood;
       if (options.followPointer !== undefined) followPointer = options.followPointer;
+      if (options.eyeThickness !== undefined) eyeThickness = options.eyeThickness;
+      if (options.mouthThickness !== undefined) mouthThickness = options.mouthThickness;
       if (options.label !== undefined) host.setAttribute("aria-label", options.label);
       if (!followPointer) {
         targetX = 0;
         targetY = 0;
       }
       paint();
+    },
+    getOptions() {
+      return { mood, eyeThickness, mouthThickness, followPointer };
     },
     destroy() {
       cancelAnimationFrame(raf);
