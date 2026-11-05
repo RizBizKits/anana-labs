@@ -1,0 +1,96 @@
+export interface AvatarSettings {
+  eyeThickness: number;
+  eyeHeight: number;
+  mouthThickness: number;
+  wobble: number;
+}
+
+export const DEFAULT_SETTINGS: AvatarSettings = {
+  eyeThickness: 0.85,
+  eyeHeight: 1,
+  mouthThickness: 0.9,
+  wobble: 0.7,
+};
+
+const STORAGE_KEY = "pineapple-avatar-settings";
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
+}
+
+function num(value: string | null | undefined, fallback: number): number {
+  if (value == null || value === "") return fallback;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export function normalizeSettings(
+  partial: Partial<AvatarSettings> = {},
+): AvatarSettings {
+  return {
+    eyeThickness: clamp(partial.eyeThickness ?? DEFAULT_SETTINGS.eyeThickness, 0.25, 2.5),
+    eyeHeight: clamp(partial.eyeHeight ?? DEFAULT_SETTINGS.eyeHeight, 0.25, 2.5),
+    mouthThickness: clamp(
+      partial.mouthThickness ?? DEFAULT_SETTINGS.mouthThickness,
+      0.25,
+      2.5,
+    ),
+    wobble: clamp(partial.wobble ?? DEFAULT_SETTINGS.wobble, 0, 2),
+  };
+}
+
+export function settingsToQuery(settings: AvatarSettings): string {
+  const q = new URLSearchParams({
+    eye: settings.eyeThickness.toFixed(2),
+    eyeH: settings.eyeHeight.toFixed(2),
+    mouth: settings.mouthThickness.toFixed(2),
+    wobble: settings.wobble.toFixed(2),
+  });
+  return q.toString();
+}
+
+export function previewHref(settings: AvatarSettings): string {
+  return `/preview.html?${settingsToQuery(settings)}`;
+}
+
+export function saveSettings(settings: AvatarSettings): void {
+  const next = normalizeSettings(settings);
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function fromSearch(search: string): Partial<AvatarSettings> {
+  const q = new URLSearchParams(search);
+  return {
+    eyeThickness: num(q.get("eye"), DEFAULT_SETTINGS.eyeThickness),
+    eyeHeight: num(q.get("eyeH"), DEFAULT_SETTINGS.eyeHeight),
+    mouthThickness: num(q.get("mouth"), DEFAULT_SETTINGS.mouthThickness),
+    wobble: num(q.get("wobble"), DEFAULT_SETTINGS.wobble),
+  };
+}
+
+function fromStorage(): Partial<AvatarSettings> {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Partial<AvatarSettings>;
+  } catch {
+    return {};
+  }
+}
+
+/** Query params win, then sessionStorage, then defaults. */
+export function loadSettings(search = window.location.search): AvatarSettings {
+  const stored = fromStorage();
+  const queried = search.includes("=") ? fromSearch(search) : {};
+  // If the URL carries any known keys, prefer those values over storage.
+  const hasQuery =
+    new URLSearchParams(search).has("eye") ||
+    new URLSearchParams(search).has("eyeH") ||
+    new URLSearchParams(search).has("mouth") ||
+    new URLSearchParams(search).has("wobble");
+  return normalizeSettings(hasQuery ? { ...stored, ...queried } : stored);
+}

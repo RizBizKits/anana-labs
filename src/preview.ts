@@ -1,5 +1,9 @@
 import "./preview.css";
 import { mountPineappleAvatar, MOODS } from "./pineappleAvatar";
+import { loadSettings, saveSettings } from "./avatarSettings";
+
+const settings = loadSettings();
+saveSettings(settings);
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
@@ -18,11 +22,8 @@ for (const m of MOODS) {
   const host = document.querySelector<HTMLDivElement>(`#bot-${m.id}`)!;
   mountPineappleAvatar(host, {
     mood: m.id,
-    followPointer: false,
+    followPointer: true,
     label: `Pineapple — ${m.label}`,
-    eyeThickness: 0.85,
-    eyeHeight: 1,
-    mouthThickness: 0.9,
-    wobble: 0.55,
+    ...settings,
   });
 }
