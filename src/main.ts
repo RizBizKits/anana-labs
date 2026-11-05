@@ -17,7 +17,7 @@ const initial = loadSettings();
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
   <main class="stage">
-    <h1 class="brand">Pineapple</h1>
+    <h1 class="brand">anana labs</h1>
     <div class="avatar-shell" aria-label="Pineapple avatar">
       <div id="bot"></div>
     </div>
