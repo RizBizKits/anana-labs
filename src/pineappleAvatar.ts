@@ -2,16 +2,7 @@ export const MOODS = [
   { id: "idle", label: "Idle" },
   { id: "thinking", label: "Thinking" },
   { id: "happy", label: "Happy" },
-  { id: "surprised", label: "Surprised" },
-  { id: "wink", label: "Wink" },
   { id: "love", label: "Love" },
-  { id: "angry", label: "Angry" },
-  { id: "sleepy", label: "Sleepy" },
-  { id: "sad", label: "Sad" },
-  { id: "silly", label: "Silly" },
-  { id: "dizzy", label: "Dizzy" },
-  { id: "scared", label: "Scared" },
-  { id: "smug", label: "Smug" },
 ] as const;
 
 export type Mood = (typeof MOODS)[number]["id"];
@@ -59,7 +50,6 @@ function pillEye(
   height: number,
   glanceX = 0,
   glanceY = 0,
-  rotateDeg = 0,
 ): string {
   const id = side === "left" ? "L" : "R";
   const t = Math.max(0.25, thickness);
@@ -68,17 +58,21 @@ function pillEye(
   const h = 10 + 14 * hh;
   const x = glanceX - w / 2;
   const y = glanceY - h / 2;
-  const rect = `<rect class="eye eye-${id}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${(w / 2).toFixed(2)}" fill="#111"/>`;
-  if (!rotateDeg) return rect;
-  return `<g transform="rotate(${rotateDeg.toFixed(1)})">${rect}</g>`;
+  return `<rect class="eye eye-${id}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${(w / 2).toFixed(2)}" fill="#111"/>`;
 }
 
-/** Closed happy/wink eye — same stroke language as Happy, not a new silhouette. */
 function closedEye(side: "left" | "right", thickness: number, height: number): string {
   const id = side === "left" ? "L" : "R";
   const sw = (1.6 + 4.2 * Math.max(0.25, thickness)).toFixed(2);
   const rise = 5 + 8 * Math.max(0.25, height);
   return `<path class="eye eye-${id}" d="M -8 3 Q 0 ${(-rise + 3).toFixed(2)} 8 3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
+}
+
+function heartEye(side: "left" | "right", thickness: number, height: number): string {
+  const id = side === "left" ? "L" : "R";
+  const s = 0.55 + 0.35 * Math.max(0.25, thickness);
+  const v = 0.55 + 0.4 * Math.max(0.25, height);
+  return `<path class="eye eye-${id}" transform="scale(${s.toFixed(3)} ${v.toFixed(3)})" d="M0 6 C0 6 -10 -2 -10 -8 C-10 -12 -6 -14 -3 -12 C-1 -11 0 -9 0 -9 C0 -9 1 -11 3 -12 C6 -14 10 -12 10 -8 C10 -2 0 6 0 6Z" fill="#111"/>`;
 }
 
 function eyeMarkup(
@@ -87,61 +81,13 @@ function eyeMarkup(
   thickness: number,
   height: number,
 ): string {
-  // Every open eye stays a vertical pill. Expression comes from glance,
-  // scale, tilt, and mouth — never circles / ellipses / hearts / Xs.
   switch (mood) {
     case "happy":
       return closedEye(side, thickness, height);
     case "thinking":
       return pillEye(side, thickness, height, side === "left" ? 3.2 : 4.2, -1);
-    case "surprised":
-      // Same pill, taller + a hair thicker — wide-eyed without changing shape
-      return pillEye(side, thickness * 1.05, height * 1.35, 0, -1.5);
-    case "wink":
-      return side === "left"
-        ? closedEye(side, thickness, height)
-        : pillEye(side, thickness, height, 0, 0);
     case "love":
-      // Soft inward glance
-      return pillEye(
-        side,
-        thickness,
-        height,
-        side === "left" ? 2.4 : -2.4,
-        1.2,
-      );
-    case "angry":
-      // Same pills, brows-in tilt
-      return pillEye(
-        side,
-        thickness,
-        height * 0.9,
-        side === "left" ? 1.5 : -1.5,
-        -1,
-        side === "left" ? -18 : 18,
-      );
-    case "sleepy":
-      // Squashed pills, looking down
-      return pillEye(side, thickness * 1.15, height * 0.35, 0, 2.5);
-    case "sad":
-      return pillEye(side, thickness, height * 0.85, 0, 3.5);
-    case "silly":
-      // Asymmetric glance + size, still pills
-      return side === "left"
-        ? pillEye(side, thickness * 1.15, height * 1.15, -2, -2)
-        : pillEye(side, thickness * 0.75, height * 0.7, 3.5, 3);
-    case "dizzy":
-      // Cross-eyed / rolled
-      return side === "left"
-        ? pillEye(side, thickness, height, 4.5, -2.5, -12)
-        : pillEye(side, thickness, height, -4.5, 2.5, 12);
-    case "scared":
-      // Tiny thin pills, pulled up
-      return pillEye(side, thickness * 0.55, height * 0.7, 0, -2.5);
-    case "smug":
-      return side === "left"
-        ? pillEye(side, thickness, height * 0.55, 1, 2)
-        : pillEye(side, thickness, height, 1.5, 0);
+      return heartEye(side, thickness, height);
     case "idle":
     default:
       return pillEye(side, thickness, height, 0, 0);
@@ -157,33 +103,8 @@ function mouthMarkup(mood: Mood, thickness: number): string {
       return `<path class="mouth" d="M -11 0 Q 0 11 11 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
     case "thinking":
       return `<path class="mouth" d="M -7 2 Q 0 0 7 3" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-    case "surprised": {
-      const rx = 3.2 + 2.2 * t;
-      const ry = 4.2 + 2.4 * t;
-      return `<ellipse class="mouth" cx="0" cy="2" rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="#111"/>`;
-    }
-    case "wink":
-      return `<path class="mouth" d="M -10 1 Q 0 10 11 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
     case "love":
       return `<path class="mouth" d="M -10 0 Q 0 12 10 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-    case "angry":
-      return `<path class="mouth" d="M -10 4 Q 0 -4 10 4" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-    case "sleepy":
-      return `<path class="mouth" d="M -6 2 Q 0 5 6 2" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-    case "sad":
-      return `<path class="mouth" d="M -10 6 Q 0 -2 10 6" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-    case "silly":
-      // Goofy open smile + tongue
-      return `<g class="mouth" fill="#111">
-        <path d="M -10 0 Q 0 10 10 0 Q 0 14 -10 0Z"/>
-        <path d="M -2 8 Q 0 16 3 9 Q 0 11 -2 8Z" fill="#e23b5a"/>
-      </g>`;
-    case "dizzy":
-      return `<path class="mouth" d="M -9 2 Q -4 8 0 2 Q 4 8 9 2" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-    case "scared":
-      return `<path class="mouth" d="M -9 1 Q -5 7 -2 1 Q 0 7 2 1 Q 5 7 9 1" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
-    case "smug":
-      return `<path class="mouth" d="M -9 2 Q 2 9 12 1" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
     case "idle":
     default:
       return `<path class="mouth" d="M -9 0 Q 0 8 9 0" fill="none" stroke="#111" stroke-width="${sw}" stroke-linecap="round"/>`;
@@ -198,8 +119,7 @@ function renderFace(
   eyeHeight: number,
   mouthThickness: number,
 ): string {
-  // Some moods look better without gaze wander
-  const lockGaze = mood === "dizzy" || mood === "sleepy" || mood === "love";
+  const lockGaze = mood === "love";
   const gx = lockGaze ? 0 : gazeX * 5;
   const gy = lockGaze ? 0 : gazeY * 4;
   const { left, right, mouth, eyeH } = FACE;
@@ -275,11 +195,7 @@ export function mountPineappleAvatar(
   };
 
   const applyWobble = (timeSec: number) => {
-    const amount = reduced ? 0 : Math.max(0, wobble);
-    // Amp up wobble a bit for wild moods
-    const moodBoost =
-      mood === "dizzy" || mood === "silly" || mood === "scared" ? 1.25 : 1;
-    const a = amount * moodBoost;
+    const a = reduced ? 0 : Math.max(0, wobble);
     const bob = Math.sin(timeSec * 2.2) * (4 + a * 2);
     const sx =
       1 + Math.sin(timeSec * 2.05) * 0.03 * a + Math.sin(timeSec * 3.4) * 0.012 * a;
