@@ -1,15 +1,10 @@
 import "./style.css";
 import {
   mountPineappleAvatar,
+  MOODS,
   type Mood,
   type PineappleAvatarHandle,
 } from "./pineappleAvatar";
-
-const MOODS: { id: Mood; label: string }[] = [
-  { id: "idle", label: "Idle" },
-  { id: "thinking", label: "Thinking" },
-  { id: "happy", label: "Happy" },
-];
 
 const DEFAULT_EYE = 0.85;
 const DEFAULT_EYE_HEIGHT = 1;
@@ -21,8 +16,8 @@ app.innerHTML = `
   <main class="stage">
     <h1 class="brand">Pineapple</h1>
     <p class="lede">
-      Your full-color pineapple art with mood eyes, width controls, and a jelly
-      wobble for an AI companion.
+      Your full-color pineapple art with expressive moods, width controls, and a
+      jelly wobble for an AI companion.
     </p>
     <div class="avatar-shell" aria-label="Pineapple avatar preview">
       <div id="bot"></div>
@@ -52,7 +47,7 @@ app.innerHTML = `
       </label>
     </div>
     <div class="meta">
-      <p>Move the pointer — the eyes follow. Call <code>setPineappleMood("thinking")</code> from your chat UI.</p>
+      <p>Move the pointer — the eyes follow. Call <code>setPineappleMood("silly")</code> from your chat UI.</p>
       <p class="status" id="status" aria-live="polite">Mood: idle</p>
     </div>
   </main>
