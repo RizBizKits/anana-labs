@@ -1,0 +1,86 @@
+.pineapple-avatar {
+  width: 100%;
+  line-height: 0;
+  position: relative;
+}
+
+.pineapple-avatar__space {
+  position: relative;
+  width: 100%;
+}
+
+.pineapple-avatar__shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 2%;
+  width: 58%;
+  height: 8%;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.35) 0%,
+    rgba(0, 0, 0, 0.12) 48%,
+    transparent 72%
+  );
+  filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+}
+
+.pineapple-avatar__stage {
+  position: relative;
+  width: 100%;
+  transform-origin: 50% 70%;
+  will-change: transform;
+}
+
+.pineapple-avatar__art {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+
+.pineapple-avatar__volume {
+  position: relative;
+  width: 100%;
+  display: none;
+  line-height: 0;
+}
+
+.pineapple-avatar__art--solid {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+  border-radius: 0;
+}
+
+.pineapple-avatar__face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  shape-rendering: geometricPrecision;
+  z-index: 3;
+}
+
+.pineapple-avatar--solid.pineapple-avatar--solid-ready .pineapple-avatar__art--flat {
+  display: none;
+}
+
+.pineapple-avatar--solid .pineapple-avatar__volume {
+  display: block;
+}
+
+.pineapple-avatar--solid .pineapple-avatar__stage {
+  transform-style: preserve-3d;
+}
+
+.pineapple-avatar:not(.pineapple-avatar--solid) .pineapple-avatar__volume {
+  display: none;
+}

@@ -1,4 +1,4 @@
-import type { RenderStyle } from "./pineappleAvatar";
+import type { CharacterId, EyeStyle, RenderStyle } from "./pineappleAvatar";
 
 export interface AvatarSettings {
   eyeThickness: number;
@@ -6,6 +6,9 @@ export interface AvatarSettings {
   mouthThickness: number;
   wobble: number;
   style: RenderStyle;
+  eyeStyle: EyeStyle;
+  blinkFrequency: number;
+  character: CharacterId;
 }
 
 export const DEFAULT_SETTINGS: AvatarSettings = {
@@ -14,6 +17,9 @@ export const DEFAULT_SETTINGS: AvatarSettings = {
   mouthThickness: 0.9,
   wobble: 0.7,
   style: "solid",
+  eyeStyle: "emotive",
+  blinkFrequency: 1,
+  character: "hoodie",
 };
 
 const STORAGE_KEY = "pineapple-avatar-settings";
@@ -32,6 +38,17 @@ function styleOf(value: string | null | undefined, fallback: RenderStyle): Rende
   return value === "flat" || value === "solid" ? value : fallback;
 }
 
+function eyeStyleOf(value: string | null | undefined, fallback: EyeStyle): EyeStyle {
+  return value === "simple" || value === "emotive" ? value : fallback;
+}
+
+function characterOf(
+  value: string | null | undefined,
+  fallback: CharacterId,
+): CharacterId {
+  return value === "pineapple" || value === "hoodie" ? value : fallback;
+}
+
 export function normalizeSettings(
   partial: Partial<AvatarSettings> = {},
 ): AvatarSettings {
@@ -45,6 +62,13 @@ export function normalizeSettings(
     ),
     wobble: clamp(partial.wobble ?? DEFAULT_SETTINGS.wobble, 0, 2),
     style: styleOf(partial.style, DEFAULT_SETTINGS.style),
+    eyeStyle: eyeStyleOf(partial.eyeStyle, DEFAULT_SETTINGS.eyeStyle),
+    blinkFrequency: clamp(
+      partial.blinkFrequency ?? DEFAULT_SETTINGS.blinkFrequency,
+      0,
+      3,
+    ),
+    character: characterOf(partial.character, DEFAULT_SETTINGS.character),
   };
 }
 
@@ -55,6 +79,9 @@ export function settingsToQuery(settings: AvatarSettings): string {
     mouth: settings.mouthThickness.toFixed(2),
     wobble: settings.wobble.toFixed(2),
     style: settings.style,
+    eyes: settings.eyeStyle,
+    blink: settings.blinkFrequency.toFixed(2),
+    character: settings.character,
   });
   return q.toString();
 }
@@ -80,6 +107,9 @@ function fromSearch(search: string): Partial<AvatarSettings> {
     mouthThickness: num(q.get("mouth"), DEFAULT_SETTINGS.mouthThickness),
     wobble: num(q.get("wobble"), DEFAULT_SETTINGS.wobble),
     style: styleOf(q.get("style"), DEFAULT_SETTINGS.style),
+    eyeStyle: eyeStyleOf(q.get("eyes"), DEFAULT_SETTINGS.eyeStyle),
+    blinkFrequency: num(q.get("blink"), DEFAULT_SETTINGS.blinkFrequency),
+    character: characterOf(q.get("character"), DEFAULT_SETTINGS.character),
   };
 }
 
@@ -103,6 +133,9 @@ export function loadSettings(search = window.location.search): AvatarSettings {
     q.has("eyeH") ||
     q.has("mouth") ||
     q.has("wobble") ||
-    q.has("style");
+    q.has("style") ||
+    q.has("eyes") ||
+    q.has("blink") ||
+    q.has("character");
   return normalizeSettings(hasQuery ? { ...stored, ...queried } : stored);
 }

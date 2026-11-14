@@ -44,6 +44,73 @@
   pointer-events: none;
 }
 
+.pineapple-avatar__layers {
+  width: 100%;
+  line-height: 0;
+  display: none;
+  user-select: none;
+  pointer-events: none;
+  position: relative;
+}
+
+.hoodie-layers {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+}
+
+.hoodie-layers__body,
+.hoodie-layers__arm {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.hoodie-layers__arm {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: auto;
+}
+
+.hoodie-layers__body {
+  position: relative;
+  z-index: 2;
+}
+
+.hoodie-layers__arm--l,
+.hoodie-layers__arm--r {
+  z-index: 1;
+}
+
+.pineapple-avatar--layers .pineapple-avatar__art--flat {
+  display: none !important;
+}
+
+.pineapple-avatar--layers .pineapple-avatar__layers {
+  display: block;
+}
+
+/* Redrawn AI-state sprite loops (hoodie companion). */
+.pineapple-avatar--sprites .pineapple-avatar__layers {
+  display: none !important;
+}
+
+.pineapple-avatar--sprites .pineapple-avatar__face {
+  display: none !important;
+}
+
+.pineapple-avatar--sprites .pineapple-avatar__art--flat {
+  display: block !important;
+}
+
+.pineapple-avatar--layers.pineapple-avatar--solid .pineapple-avatar__volume {
+  display: none !important;
+}
+
 .pineapple-avatar__volume {
   position: relative;
   width: 100%;
