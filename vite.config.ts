@@ -20,7 +20,10 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(root, "index.html"),
+        v1: resolve(root, "v1.html"),
+        v1Preview: resolve(root, "v1-preview.html"),
         preview: resolve(root, "preview.html"),
+        animator: resolve(root, "animator.html"),
       },
     },
   },

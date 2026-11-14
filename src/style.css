@@ -1,16 +1,19 @@
 :root {
-  --bg-0: #1a1408;
-  --bg-1: #2a1f0c;
-  --sun: #f5c518;
-  --sun-soft: #ffe28a;
-  --ink: #140f06;
-  --cream: #fff6df;
-  --muted: #c9b48a;
-  --panel: rgba(255, 246, 223, 0.08);
-  --line: rgba(255, 246, 223, 0.16);
-  --ok: #7ddea0;
-  --font-display: "Fraunces", Georgia, serif;
-  --font-body: "DM Sans", system-ui, sans-serif;
+  /* useanana.com marketing tokens */
+  --bg-0: #fcfcfa;
+  --pine: #38634a;
+  --pine-hover: #2d513b;
+  --logo: #4e7651;
+  --leaf: #e8efde;
+  --ink: #29392f;
+  --muted: #596851;
+  --panel: #ffffff;
+  --panel-soft: #f7faf3;
+  --line: #d7dfd0;
+  --on-pine: #ffffff;
+  --ok: #38634a;
+  --font-display: "Manrope", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, sans-serif;
 }
 
 * {
@@ -25,9 +28,14 @@ body {
 
 body {
   font-family: var(--font-body);
-  color: var(--cream);
+  color: var(--ink);
   background: var(--bg-0);
   min-height: 100vh;
+}
+
+::selection {
+  background: var(--pine);
+  color: var(--on-pine);
 }
 
 #app {
@@ -52,7 +60,65 @@ body {
   letter-spacing: -0.03em;
   line-height: 1;
   margin: 0;
-  color: var(--sun);
+  color: var(--logo);
+}
+
+.brand a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.home {
+  display: grid;
+  gap: 2rem;
+  justify-items: center;
+  text-align: center;
+  animation: rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.home .brand {
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+}
+
+.home-versions {
+  display: flex;
+  align-items: baseline;
+  gap: 1.75rem;
+}
+
+.home-version {
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 2.5vw, 1.35rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.home-version:hover {
+  color: var(--pine);
+  border-bottom-color: var(--pine);
+}
+
+.stage-top {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.nav-back {
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  color: var(--ink);
 }
 
 .avatar-shell {
@@ -81,8 +147,8 @@ body {
 .controls button {
   appearance: none;
   border: 1px solid var(--line);
-  background: var(--panel);
-  color: var(--cream);
+  background: var(--panel-soft);
+  color: var(--ink);
   font: 600 0.85rem/1 var(--font-body);
   padding: 0.62rem 0.9rem;
   border-radius: 999px;
@@ -91,14 +157,14 @@ body {
 }
 
 .controls button:hover {
-  border-color: rgba(245, 197, 24, 0.45);
+  border-color: var(--pine);
   transform: translateY(-1px);
 }
 
 .controls button[aria-pressed="true"] {
-  background: var(--sun);
-  color: var(--ink);
-  border-color: var(--sun);
+  background: var(--pine);
+  color: var(--on-pine);
+  border-color: var(--pine);
 }
 
 .controls--style {
@@ -127,13 +193,13 @@ body {
 }
 
 .slider output {
-  color: var(--sun-soft);
+  color: var(--pine);
   font-variant-numeric: tabular-nums;
 }
 
 .slider input[type="range"] {
   width: 100%;
-  accent-color: var(--sun);
+  accent-color: var(--pine);
   cursor: pointer;
 }
 
@@ -151,16 +217,16 @@ body {
 }
 
 .preview-link {
-  color: var(--sun);
+  color: var(--pine);
   font-weight: 600;
   text-decoration: none;
-  border-bottom: 1px solid rgba(245, 197, 24, 0.35);
+  border-bottom: 1px solid color-mix(in srgb, var(--pine) 35%, transparent);
   transition: border-color 160ms ease, color 160ms ease;
 }
 
 .preview-link:hover {
-  color: var(--sun-soft);
-  border-bottom-color: var(--sun-soft);
+  color: var(--pine-hover);
+  border-bottom-color: var(--pine-hover);
 }
 
 @keyframes rise {

@@ -109,13 +109,16 @@ function buildInflatedGeometry(
       const h = heightAt(dist, mask, tw, th, maxD, u, v);
       const x = (u - 0.5) * worldW;
       const y = (0.5 - v) * worldH;
-      const z = h * thick;
+      // Thin sticks (arms/legs) get almost-flat extrusion so they don't ghost
+      const localThick = thick * (0.35 + 0.65 * h);
+      const z = h * localThick;
       if (!alive) {
         grid[j]![i] = { fi: -1, bi: -1, u, v, alive: false };
         continue;
       }
       const fi = pushV(x, y, z, u, v);
-      const bi = pushV(x, y, -z * 0.9, u, v);
+      // Skip a real back shell on ultra-thin features (avoids triple-limb ghosts)
+      const bi = h < 0.14 ? fi : pushV(x, y, -z * 0.85, u, v);
       grid[j]![i] = { fi, bi, u, v, alive: true };
     }
   }
@@ -123,7 +126,15 @@ function buildInflatedGeometry(
   const tryQuad = (a: Cell, b: Cell, c: Cell, d: Cell) => {
     if (!a.alive || !b.alive || !c.alive || !d.alive) return;
     indices.push(a.fi, b.fi, d.fi, b.fi, c.fi, d.fi);
-    indices.push(a.bi, d.bi, b.bi, b.bi, d.bi, c.bi);
+    // Only emit back faces when every corner has a distinct back vertex
+    if (
+      a.bi !== a.fi &&
+      b.bi !== b.fi &&
+      c.bi !== c.fi &&
+      d.bi !== d.fi
+    ) {
+      indices.push(a.bi, d.bi, b.bi, b.bi, d.bi, c.bi);
+    }
   };
 
   for (let j = 0; j < gh - 1; j++) {
@@ -132,20 +143,20 @@ function buildInflatedGeometry(
     }
   }
 
-  // Thin rim only near the silhouette (avoids the chunky “stair” artifacts)
+  // Rim only on medium-edge cells — skip hairline sticks (arms/legs)
   for (let j = 0; j < gh; j++) {
     for (let i = 0; i < gw; i++) {
       const cell = grid[j]![i]!;
-      if (!cell.alive) continue;
+      if (!cell.alive || cell.bi === cell.fi) continue;
       const h = heightAt(dist, mask, tw, th, maxD, cell.u, cell.v);
-      if (h > 0.18) continue;
+      if (h > 0.18 || h < 0.08) continue;
       for (const [ni, nj] of [
         [i + 1, j],
         [i, j + 1],
       ] as const) {
         if (ni >= gw || nj >= gh) continue;
         const other = grid[nj]![ni]!;
-        if (!other.alive) continue;
+        if (!other.alive || other.bi === other.fi) continue;
         indices.push(cell.fi, other.fi, other.bi, cell.fi, other.bi, cell.bi);
       }
     }
@@ -179,9 +190,34 @@ export async function createSolidMesh(
   const ctx = c.getContext("2d", { willReadFrequently: true })!;
   ctx.drawImage(img, 0, 0, tw, th);
   const data = ctx.getImageData(0, 0, tw, th).data;
+  // Harder alpha cutoff kills fringe “ghost shells” on thin limbs
+  const raw = new Uint8Array(tw * th);
+  for (let i = 0, p = 0; i < raw.length; i++, p += 4) {
+    raw[i] = (data[p + 3] ?? 0) > 90 ? 1 : 0;
+  }
+  // One-pixel dilate so skinny arms/legs get enough depth samples
   const mask = new Uint8Array(tw * th);
-  for (let i = 0, p = 0; i < mask.length; i++, p += 4) {
-    mask[i] = (data[p + 3] ?? 0) > 20 ? 1 : 0;
+  for (let y = 0; y < th; y++) {
+    for (let x = 0; x < tw; x++) {
+      const i = y * tw + x;
+      if (raw[i]) {
+        mask[i] = 1;
+        continue;
+      }
+      let hit = 0;
+      for (let dy = -1; dy <= 1 && !hit; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= tw || ny >= th) continue;
+          if (raw[ny * tw + nx]) {
+            hit = 1;
+            break;
+          }
+        }
+      }
+      mask[i] = hit;
+    }
   }
   const dist = distanceField(mask, tw, th);
   let maxD = 1;
@@ -218,6 +254,8 @@ export async function createSolidMesh(
   scene.add(ambient, key, fill, hemi);
 
   const geo = buildInflatedGeometry(dist, mask, tw, th, maxD);
+  // alphaTest (no transparent) + FrontSide: thin limbs stay single-shell
+  // instead of ghosted front/back stacks. Mild CSS tilt still reads fine.
   const mat = new THREE.MeshStandardMaterial({
     map: texture,
     color: 0xffffff,
@@ -225,9 +263,10 @@ export async function createSolidMesh(
     metalness: 0,
     emissive: new THREE.Color("#201800"),
     emissiveIntensity: 0.18,
-    transparent: true,
-    alphaTest: 0.08,
-    side: THREE.DoubleSide,
+    transparent: false,
+    alphaTest: 0.5,
+    depthWrite: true,
+    side: THREE.FrontSide,
   });
   const pineapple = new THREE.Mesh(geo, mat);
   const root = new THREE.Group();
