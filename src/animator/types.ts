@@ -47,7 +47,7 @@ export interface SpritesheetAtlas {
     image: string;
     size: { w: number; h: number };
     frameSize: { w: number; h: number };
-    animation: AnimId;
+    animation: string;
     frameCount: number;
     fps: number;
     columns: number;

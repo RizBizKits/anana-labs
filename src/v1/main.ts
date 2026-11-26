@@ -12,6 +12,14 @@ import {
   saveSettings,
   type AvatarSettings,
 } from "./avatarSettings";
+import {
+  buildV1MoodSheet,
+  downloadV1Json,
+  downloadV1Lottie,
+  downloadV1Png,
+  downloadV1Svg,
+} from "./exportAvatar";
+import type { PackedSpritesheet } from "../animator/types";
 
 const initial = loadSettings();
 
@@ -53,6 +61,15 @@ app.innerHTML = `
         <input id="wobble" type="range" min="0" max="2" step="0.05" value="${initial.wobble}" />
       </label>
     </div>
+    <div class="export-panel" aria-label="Export">
+      <button type="button" class="btn btn--primary" id="export-build">Generate spritesheet</button>
+      <div class="btn-grid">
+        <button type="button" class="btn btn--ghost" id="dl-png" disabled>Download PNG</button>
+        <button type="button" class="btn btn--ghost" id="dl-json" disabled>Download JSON</button>
+        <button type="button" class="btn btn--ghost" id="dl-lottie" disabled>Export Lottie</button>
+        <button type="button" class="btn btn--ghost" id="dl-svg" disabled>Export SVG</button>
+      </div>
+    </div>
     <div class="meta">
       <p class="status" id="status" aria-live="polite">Idle</p>
       <p><a class="preview-link" id="preview-link" href="${previewHref(initial)}">Preview</a></p>
@@ -73,8 +90,22 @@ const eyeOut = document.querySelector<HTMLOutputElement>("#eye-out")!;
 const eyeHeightOut = document.querySelector<HTMLOutputElement>("#eye-height-out")!;
 const mouthOut = document.querySelector<HTMLOutputElement>("#mouth-out")!;
 const wobbleOut = document.querySelector<HTMLOutputElement>("#wobble-out")!;
+const exportBuildBtn = document.querySelector<HTMLButtonElement>("#export-build")!;
+const dlPngBtn = document.querySelector<HTMLButtonElement>("#dl-png")!;
+const dlJsonBtn = document.querySelector<HTMLButtonElement>("#dl-json")!;
+const dlLottieBtn = document.querySelector<HTMLButtonElement>("#dl-lottie")!;
+const dlSvgBtn = document.querySelector<HTMLButtonElement>("#dl-svg")!;
 
 let style: RenderStyle = initial.style;
+let currentMood: Mood = "idle";
+let packed: PackedSpritesheet | null = null;
+
+function setDownloadsEnabled(on: boolean): void {
+  dlPngBtn.disabled = !on;
+  dlJsonBtn.disabled = !on;
+  dlLottieBtn.disabled = !on;
+  dlSvgBtn.disabled = !on;
+}
 
 const avatar = mountPineappleAvatar(host, {
   mood: "idle",
@@ -95,11 +126,15 @@ function readSettings(): AvatarSettings {
 }
 
 function setMood(mood: Mood) {
+  currentMood = mood;
   avatar.update({ mood });
   status.textContent = mood[0]!.toUpperCase() + mood.slice(1);
   for (const btn of buttons) {
     btn.setAttribute("aria-pressed", String(btn.dataset.mood === mood));
   }
+  // Settings/mood changed — previous sheet may no longer match.
+  packed = null;
+  setDownloadsEnabled(false);
 }
 
 function setStyle(next: RenderStyle) {
@@ -119,6 +154,38 @@ function syncControls() {
   avatar.update(settings);
   saveSettings(settings);
   previewLink.href = previewHref(settings);
+  packed = null;
+  setDownloadsEnabled(false);
+}
+
+async function generateExport(): Promise<void> {
+  exportBuildBtn.disabled = true;
+  setDownloadsEnabled(false);
+  const settings = readSettings();
+  status.textContent = `Exporting ${currentMood}…`;
+  try {
+    packed = await buildV1MoodSheet({
+      mood: currentMood,
+      eyeThickness: settings.eyeThickness,
+      eyeHeight: settings.eyeHeight,
+      mouthThickness: settings.mouthThickness,
+      wobble: settings.wobble,
+      frameCount: 8,
+      fps: 12,
+      frameWidth: 256,
+    });
+    setDownloadsEnabled(true);
+    status.textContent =
+      style === "solid"
+        ? `${currentMood[0]!.toUpperCase()}${currentMood.slice(1)} sheet ready (flat composite)`
+        : `${currentMood[0]!.toUpperCase()}${currentMood.slice(1)} sheet ready`;
+  } catch (err) {
+    console.error(err);
+    packed = null;
+    status.textContent = err instanceof Error ? err.message : "Export failed";
+  } finally {
+    exportBuildBtn.disabled = false;
+  }
 }
 
 for (const btn of buttons) {
@@ -131,6 +198,34 @@ eyeInput.addEventListener("input", syncControls);
 eyeHeightInput.addEventListener("input", syncControls);
 mouthInput.addEventListener("input", syncControls);
 wobbleInput.addEventListener("input", syncControls);
+
+exportBuildBtn.addEventListener("click", () => void generateExport());
+dlPngBtn.addEventListener("click", () => {
+  if (!packed) return;
+  downloadV1Png(packed);
+});
+dlJsonBtn.addEventListener("click", () => {
+  if (!packed) return;
+  downloadV1Json(packed);
+});
+dlLottieBtn.addEventListener("click", () => {
+  if (!packed) return;
+  try {
+    downloadV1Lottie(packed);
+  } catch (err) {
+    console.error(err);
+    status.textContent = err instanceof Error ? err.message : "Lottie export failed";
+  }
+});
+dlSvgBtn.addEventListener("click", () => {
+  if (!packed) return;
+  try {
+    downloadV1Svg(packed);
+  } catch (err) {
+    console.error(err);
+    status.textContent = err instanceof Error ? err.message : "SVG export failed";
+  }
+});
 
 saveSettings(initial);
 previewLink.href = previewHref(initial);

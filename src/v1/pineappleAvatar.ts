@@ -113,7 +113,7 @@ function mouthMarkup(mood: Mood, thickness: number): string {
   }
 }
 
-function renderFace(
+export function renderFace(
   mood: Mood,
   gazeX: number,
   gazeY: number,
