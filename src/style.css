@@ -203,6 +203,58 @@ body {
   cursor: pointer;
 }
 
+.export-panel {
+  display: grid;
+  gap: 0.55rem;
+  width: min(360px, 100%);
+  animation: rise 1050ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.export-panel .btn {
+  border: none;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  font: 600 0.9rem/1 var(--font-body);
+  cursor: pointer;
+  width: 100%;
+}
+
+.export-panel .btn--primary {
+  background: var(--pine);
+  color: var(--on-pine);
+}
+
+.export-panel .btn--primary:hover:not(:disabled) {
+  background: var(--pine-hover);
+}
+
+.export-panel .btn--primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.export-panel .btn--ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.export-panel .btn--ghost:hover:not(:disabled) {
+  border-color: var(--pine);
+  color: var(--pine);
+}
+
+.export-panel .btn--ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.export-panel .btn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
 .meta {
   display: grid;
   gap: 0.5rem;
