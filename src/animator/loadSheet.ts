@@ -2,6 +2,7 @@ import {
   companionFrameUrls,
   normalizeCompanionState,
   type CompanionStateAlias,
+  type CompanionStateId,
 } from "./companionStates";
 import type { AnimId, FrameRect, PackedSpritesheet, SpritesheetAtlas } from "./types";
 import { loadImage } from "./renderFrame";
@@ -69,6 +70,8 @@ export function redrawnWalkFrameUrls(): string[] {
 }
 
 /** Any redrawn AI-companion state pack. */
-export function redrawnStateFrameUrls(state: CompanionStateAlias): string[] {
+export function redrawnStateFrameUrls(
+  state: CompanionStateAlias | CompanionStateId,
+): string[] {
   return companionFrameUrls(normalizeCompanionState(state));
 }

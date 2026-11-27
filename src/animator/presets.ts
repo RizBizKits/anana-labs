@@ -1,24 +1,61 @@
 import type { AnimId, AnimPreset, CharacterPose, LayerPose } from "./types";
 
-export const ANIM_PRESETS: AnimPreset[] = [
-  { id: "idle", label: "Idle", durationSec: 1.4, defaultFrames: 8 },
-  { id: "thinking", label: "Working", durationSec: 1.2, defaultFrames: 8 },
-  { id: "success", label: "Success", durationSec: 0.9, defaultFrames: 8 },
-  { id: "error", label: "Error", durationSec: 1.1, defaultFrames: 8 },
-  { id: "walk", label: "Walk", durationSec: 0.9, defaultFrames: 8 },
+export type AnimGroupId = "body-slim" | "body-puffy";
+
+export interface AnimGroup {
+  id: AnimGroupId;
+  /** Short section title in the animator UI. */
+  title: string;
+  /** One-line hint under the title. */
+  hint: string;
+  presets: AnimPreset[];
+}
+
+/** Grouped by character body: packs in a group share the same pineapple body and shape. */
+export const ANIM_GROUPS: AnimGroup[] = [
+  {
+    id: "body-slim",
+    title: "Slim pineapple · stick arms",
+    hint: "Pear body, thin green arms.",
+    presets: [
+      { id: "idle-open", label: "Idle", durationSec: 1.4, defaultFrames: 8 },
+      { id: "thinking", label: "Working", durationSec: 1.2, defaultFrames: 8 },
+      { id: "success", label: "Success", durationSec: 0.9, defaultFrames: 8 },
+      { id: "error", label: "Error", durationSec: 1.1, defaultFrames: 8 },
+      { id: "walk", label: "Walk", durationSec: 0.9, defaultFrames: 8 },
+    ],
+  },
+  {
+    id: "body-puffy",
+    title: "Puffy hoodie",
+    hint: "Same mitt-hand Idle in two hoodie colors; fist / boots differ.",
+    presets: [
+      { id: "idle", label: "Idle · mitt", durationSec: 1.4, defaultFrames: 8 },
+      { id: "idle-mitt", label: "Idle · mitt · yellow", durationSec: 1.4, defaultFrames: 8 },
+      { id: "idle-fist", label: "Fist hands", durationSec: 1.4, defaultFrames: 8 },
+      { id: "idle-mitt-sneakers", label: "Mitt + boots", durationSec: 1.4, defaultFrames: 8 },
+    ],
+  },
 ];
 
+/** Flat list (order = moods, then hand variants). */
+export const ANIM_PRESETS: AnimPreset[] = ANIM_GROUPS.flatMap((g) => g.presets);
+
 /** Presets that have Cursor-redrawn frame packs (not procedural puppet). */
-export const REDRAWN_ANIM_IDS: AnimId[] = [
-  "idle",
-  "thinking",
-  "success",
-  "error",
-  "walk",
-];
+export const REDRAWN_ANIM_IDS: AnimId[] = ANIM_PRESETS.map((p) => p.id);
+
+export function isIdleAnim(anim: AnimId): boolean {
+  return anim === "idle" || anim.startsWith("idle-");
+}
 
 export function presetById(id: AnimId): AnimPreset {
   return ANIM_PRESETS.find((p) => p.id === id) ?? ANIM_PRESETS[0]!;
+}
+
+export function groupForAnim(id: AnimId): AnimGroup {
+  return (
+    ANIM_GROUPS.find((g) => g.presets.some((p) => p.id === id)) ?? ANIM_GROUPS[0]!
+  );
 }
 
 const identity = (): LayerPose => ({ x: 0, y: 0, rot: 0, sx: 1, sy: 1 });
@@ -39,7 +76,7 @@ export function samplePose(anim: AnimId, t: number): CharacterPose {
   const armL = identity();
   const armR = identity();
 
-  if (anim === "idle") {
+  if (isIdleAnim(anim)) {
     const breath = soft(u * Math.PI * 2);
     const sway = soft(u * Math.PI * 2 + 0.35);
     body.y = breath * -5;
