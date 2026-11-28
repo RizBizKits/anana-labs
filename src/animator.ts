@@ -12,22 +12,13 @@ import {
 } from "./animator/companionStates";
 import { packFromFrameUrls, redrawnStateFrameUrls } from "./animator/loadSheet";
 import { exportLottie, exportSvg } from "./animator/exportLottie";
+import { downloadCanvasPng, downloadJson } from "./animator/packSheet";
 import {
-  downloadCanvasPng,
-  downloadJson,
-  generateSpritesheet,
-} from "./animator/packSheet";
-import { ANIM_PRESETS, presetById, REDRAWN_ANIM_IDS } from "./animator/presets";
-import {
-  loadFlatCharacter,
-  loadHoodieLayers,
-  type LayerImages,
-} from "./animator/renderFrame";
+  ANIM_GROUPS,
+  presetById,
+  REDRAWN_ANIM_IDS,
+} from "./animator/presets";
 import type { AnimId, PackedSpritesheet } from "./animator/types";
-
-type CharacterSource = "hoodie" | "pineapple" | "upload" | "redrawn";
-
-const pineappleUrl = new URL("./assets/pineapple.png", import.meta.url).href;
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
@@ -38,52 +29,54 @@ app.innerHTML = `
     </div>
     <div class="animator__grid">
       <aside class="panel" aria-label="Controls">
-        <h2>Character</h2>
-        <div class="seg" role="group" aria-label="Character source">
-          <button type="button" data-char="hoodie" aria-pressed="false">Hoodie</button>
-          <button type="button" data-char="pineapple" aria-pressed="false">Pineapple</button>
-          <button type="button" data-char="redrawn" aria-pressed="true">Redrawn</button>
-          <button type="button" data-char="upload" aria-pressed="false">Upload</button>
-        </div>
-        <label class="field" id="upload-field" hidden style="display: none">
-          <span>Image PNG</span>
-          <input id="file" type="file" accept="image/png,image/webp,image/jpeg" />
-        </label>
+        <p class="hint">Build mood / walk loops as PNG + JSON atlas.</p>
 
         <h2>Animation</h2>
-        <div class="seg" role="group" aria-label="Animation">
-          ${ANIM_PRESETS.map(
-            (p) =>
-              `<button type="button" data-anim="${p.id}" aria-pressed="${p.id === "idle"}">${p.label}</button>`,
-          ).join("")}
+        ${ANIM_GROUPS.map(
+          (group) => `
+        <div class="anim-group">
+          <h3 class="anim-group__title">${group.title}</h3>
+          <p class="hint anim-group__hint">${group.hint}</p>
+          <div class="seg seg--wrap" role="group" aria-label="${group.title}">
+            ${group.presets
+              .map(
+                (p) =>
+                  `<button type="button" data-anim="${p.id}" aria-pressed="${p.id === "idle"}">${p.label}</button>`,
+              )
+              .join("")}
+          </div>
+        </div>`,
+        ).join("")}
+
+        <div id="sheet-controls">
+          <label class="field">
+            <span>Frames</span>
+            <input id="frames" type="number" min="4" max="24" value="8" />
+          </label>
+          <label class="field">
+            <span>FPS</span>
+            <input id="fps" type="number" min="4" max="30" value="12" />
+          </label>
+          <label class="field">
+            <span>Frame width (px)</span>
+            <input id="frame-w" type="number" min="64" max="512" step="16" value="256" />
+          </label>
+
+          <button type="button" class="btn btn--primary" id="generate">Generate spritesheet</button>
+          <div class="btn-grid">
+            <button type="button" class="btn btn--ghost" id="dl-png" disabled>Download PNG</button>
+            <button type="button" class="btn btn--ghost" id="dl-json" disabled>Download JSON</button>
+            <button type="button" class="btn btn--ghost" id="dl-lottie" disabled>Export Lottie</button>
+            <button type="button" class="btn btn--ghost" id="dl-svg" disabled>Export SVG</button>
+          </div>
         </div>
 
-        <label class="field">
-          <span>Frames</span>
-          <input id="frames" type="number" min="4" max="24" value="8" />
-        </label>
-        <label class="field">
-          <span>FPS</span>
-          <input id="fps" type="number" min="4" max="30" value="12" />
-        </label>
-        <label class="field">
-          <span>Frame width (px)</span>
-          <input id="frame-w" type="number" min="64" max="512" step="16" value="256" />
-        </label>
-
-        <button type="button" class="btn btn--primary" id="generate">Generate spritesheet</button>
-        <div class="btn-grid">
-          <button type="button" class="btn btn--ghost" id="dl-png" disabled>Download PNG</button>
-          <button type="button" class="btn btn--ghost" id="dl-json" disabled>Download JSON</button>
-          <button type="button" class="btn btn--ghost" id="dl-lottie" disabled>Export Lottie</button>
-          <button type="button" class="btn btn--ghost" id="dl-svg" disabled>Export SVG</button>
-        </div>
         <p class="status" id="status" aria-live="polite"></p>
       </aside>
 
       <section class="stage-panel">
         <div class="preview-wrap">
-          <div class="preview-stage">
+          <div class="preview-stage" id="preview-stage-sheet">
             <img id="preview-base" alt="Animation preview" width="256" height="364" />
             <canvas id="preview-eyes" width="256" height="364" aria-hidden="true"></canvas>
           </div>
@@ -100,8 +93,6 @@ const statusEl = document.querySelector<HTMLParagraphElement>("#status")!;
 const previewBase = document.querySelector<HTMLImageElement>("#preview-base")!;
 const previewEyes = document.querySelector<HTMLCanvasElement>("#preview-eyes")!;
 const sheetCanvas = document.querySelector<HTMLCanvasElement>("#sheet")!;
-const uploadField = document.querySelector<HTMLLabelElement>("#upload-field")!;
-const fileInput = document.querySelector<HTMLInputElement>("#file")!;
 const framesInput = document.querySelector<HTMLInputElement>("#frames")!;
 const fpsInput = document.querySelector<HTMLInputElement>("#fps")!;
 const frameWInput = document.querySelector<HTMLInputElement>("#frame-w")!;
@@ -110,16 +101,14 @@ const dlPngBtn = document.querySelector<HTMLButtonElement>("#dl-png")!;
 const dlJsonBtn = document.querySelector<HTMLButtonElement>("#dl-json")!;
 const dlLottieBtn = document.querySelector<HTMLButtonElement>("#dl-lottie")!;
 const dlSvgBtn = document.querySelector<HTMLButtonElement>("#dl-svg")!;
-const charButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-char]")];
 const animButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-anim]")];
 
-let character: CharacterSource = "redrawn";
 let anim: AnimId = "idle";
 
 function isRedrawnAnim(id: AnimId): id is CompanionStateId {
   return (REDRAWN_ANIM_IDS as AnimId[]).includes(id);
 }
-let layers: LayerImages | null = null;
+
 let packed: PackedSpritesheet | null = null;
 let previewRaf = 0;
 let previewStart = 0;
@@ -127,7 +116,6 @@ let previewFrameUrls: string[] = [];
 let previewEyeCache: Array<EyePair | null> = [];
 let previewFw = 256;
 let previewFh = 364;
-let blobUrls: string[] = [];
 
 function setStatus(msg: string): void {
   statusEl.textContent = msg;
@@ -151,19 +139,6 @@ function canvasToBlobUrl(canvas: HTMLCanvasElement): Promise<string> {
   });
 }
 
-async function ensureLayers(): Promise<LayerImages> {
-  if (character === "hoodie") {
-    layers = await loadHoodieLayers();
-  } else if (character === "pineapple") {
-    layers = await loadFlatCharacter(pineappleUrl);
-  } else if (character === "redrawn") {
-    throw new Error("Redrawn mode does not use puppet layers");
-  } else if (!layers) {
-    throw new Error("Upload a character image first");
-  }
-  return layers;
-}
-
 function stopPreview(): void {
   if (previewRaf) cancelAnimationFrame(previewRaf);
   previewRaf = 0;
@@ -183,12 +158,10 @@ function cloneCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
   return c;
 }
 
-/** Bake blink/look into sheet cells so downloads aren't stoic either. */
 function bakeEyesIntoSheet(sheet: PackedSpritesheet): PackedSpritesheet {
   const { atlas, frames } = sheet;
   const outFrames = frames.map((frame, i) => {
     const copy = cloneCanvas(frame);
-    // Spread motion across the sheet so a blink/glance actually appears.
     applyEyesToFrame(copy, sampleEyeMotion(i * 0.55 + 0.1));
     return copy;
   });
@@ -215,7 +188,6 @@ async function startPreview(sheet: PackedSpritesheet): Promise<void> {
   const fps = Math.max(1, atlas.meta.fps);
   if (!frames.length) return;
 
-  // Body frames as <img> (never blank). Eyes draw on a transparent overlay canvas.
   const urls: string[] = [];
   const eyeCache: Array<EyePair | null> = [];
   for (const frame of frames) {
@@ -259,12 +231,17 @@ async function startPreview(sheet: PackedSpritesheet): Promise<void> {
   previewRaf = requestAnimationFrame(tick);
 }
 
-function showSheet(sheet: PackedSpritesheet): void {
-  sheetCanvas.width = sheet.canvas.width;
-  sheetCanvas.height = sheet.canvas.height;
+function showSheetCanvas(source: HTMLCanvasElement): void {
+  sheetCanvas.width = source.width;
+  sheetCanvas.height = source.height;
   const ctx = sheetCanvas.getContext("2d")!;
   ctx.clearRect(0, 0, sheetCanvas.width, sheetCanvas.height);
-  ctx.drawImage(sheet.canvas, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(source, 0, 0);
+}
+
+function showPackedSheet(sheet: PackedSpritesheet): void {
+  showSheetCanvas(sheet.canvas);
 }
 
 function setDownloadsEnabled(on: boolean): void {
@@ -284,34 +261,20 @@ async function generate(): Promise<void> {
     fpsInput.value = String(fps);
     frameWInput.value = String(frameWidth);
 
-    if (character === "redrawn" && isRedrawnAnim(anim)) {
-      const meta = companionStateMeta(anim);
-      framesInput.value = "8";
-      packed = await packFromFrameUrls(redrawnStateFrameUrls(anim), {
-        anim,
-        fps: fps || meta.fps,
-        frameWidth,
-      });
-    } else {
-      // Attack (and any non-redrawn preset) uses procedural hoodie/pineapple layers.
-      const src =
-        character === "redrawn"
-          ? await loadHoodieLayers()
-          : await ensureLayers();
-      const frameCount = Math.min(24, Math.max(4, Number(framesInput.value) || 8));
-      framesInput.value = String(frameCount);
-      packed = generateSpritesheet(src, {
-        anim,
-        frameCount,
-        fps,
-        frameWidth,
-      });
+    if (!isRedrawnAnim(anim)) {
+      throw new Error(`No redrawn frames for ${anim}`);
     }
+    const meta = companionStateMeta(anim);
+    framesInput.value = "8";
+    packed = await packFromFrameUrls(redrawnStateFrameUrls(anim), {
+      anim,
+      fps: fps || meta.fps,
+      frameWidth,
+    });
 
-    // Preview uses raw frames + live eye overlay; sheet/download get baked eyes.
     const raw = packed;
     packed = bakeEyesIntoSheet(raw);
-    showSheet(packed);
+    showPackedSheet(packed);
     await startPreview(raw);
     setDownloadsEnabled(true);
     setStatus("");
@@ -323,18 +286,6 @@ async function generate(): Promise<void> {
   }
 }
 
-for (const b of charButtons) {
-  b.addEventListener("click", () => {
-    character = b.dataset.char as CharacterSource;
-    setPressed(charButtons, "data-char", character);
-    const showUpload = character === "upload";
-    uploadField.hidden = !showUpload;
-    uploadField.style.display = showUpload ? "" : "none";
-    layers = null;
-    setStatus("");
-  });
-}
-
 for (const b of animButtons) {
   b.addEventListener("click", () => {
     anim = b.dataset.anim as AnimId;
@@ -344,22 +295,6 @@ for (const b of animButtons) {
     void generate();
   });
 }
-
-fileInput.addEventListener("change", async () => {
-  const file = fileInput.files?.[0];
-  if (!file) return;
-  for (const u of blobUrls) URL.revokeObjectURL(u);
-  blobUrls = [];
-  const url = URL.createObjectURL(file);
-  blobUrls.push(url);
-  try {
-    layers = await loadFlatCharacter(url);
-    setStatus("");
-  } catch {
-    setStatus("Could not load that image");
-    layers = null;
-  }
-});
 
 generateBtn.addEventListener("click", () => void generate());
 
@@ -394,10 +329,8 @@ dlSvgBtn.addEventListener("click", () => {
   }
 });
 
-// Default: redrawn idle (AI companion resting state).
 void (async () => {
   try {
-    setPressed(charButtons, "data-char", "redrawn");
     setPressed(animButtons, "data-anim", "idle");
     await generate();
   } catch (err) {

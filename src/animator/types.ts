@@ -1,5 +1,10 @@
 export type AnimId =
   | "idle"
+  | "idle-open"
+  | "idle-sleeved"
+  | "idle-mitt"
+  | "idle-mitt-sneakers"
+  | "idle-fist"
   | "walk"
   | "thinking"
   | "success"
